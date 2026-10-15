@@ -21,7 +21,8 @@ html, body, .stApp, [class*="css"], .stMarkdown, button, input, textarea, select
   font-family: 'Almarai', sans-serif !important; }
 .stApp { direction: rtl; }
 [data-testid="stSidebar"] { direction: rtl; border-left: 1px solid var(--line); }
-.block-container { padding-top: 1.6rem; max-width: 1280px; }
+.block-container { padding-top: 3.2rem; max-width: 1280px; }
+.brand { padding-top: .3rem; }
 h1, h2, h3 { color: var(--ink); font-weight: 800; letter-spacing: 0; }
 .brand { display:flex; align-items:baseline; gap:.7rem; margin-bottom:.2rem; }
 .brand .name { color: var(--teal); font-size: 2.3rem; font-weight: 800; line-height: 1; }
