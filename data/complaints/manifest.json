@@ -1,0 +1,111 @@
+{
+  "seed": 20261015,
+  "variants_per_family": 5,
+  "splits": {
+    "dev": {
+      "rows": 180,
+      "families": [
+        "A03",
+        "A04",
+        "A06",
+        "A07",
+        "A08",
+        "A10",
+        "G01",
+        "G04",
+        "G05",
+        "G07",
+        "G08",
+        "K02",
+        "K04",
+        "K05",
+        "K06",
+        "K07",
+        "K10",
+        "O02",
+        "O03",
+        "O04",
+        "O07",
+        "O08",
+        "O09",
+        "T01",
+        "T02",
+        "T03",
+        "T05",
+        "T06",
+        "T07",
+        "T11",
+        "W01",
+        "W02",
+        "W03",
+        "W07",
+        "W08",
+        "W10"
+      ],
+      "by_category": {
+        "other": 30,
+        "account_access": 30,
+        "agent_dispute": 25,
+        "wrong_recipient": 30,
+        "card": 30,
+        "transfer_failed": 35
+      },
+      "sha256": "b7fd3daa3ec1ada4b11f5a381d6fb77696c1ed7933606dbf553ee6545dba56e2",
+      "labels_sha256": "851de7e5c719405e5b9dad24745df3b5ac1c839cf4b4595a6be62ae4a076cdb9"
+    },
+    "calib": {
+      "rows": 60,
+      "families": [
+        "A05",
+        "A09",
+        "G06",
+        "G09",
+        "K01",
+        "K08",
+        "O05",
+        "T08",
+        "T09",
+        "T10",
+        "W05",
+        "W09"
+      ],
+      "by_category": {
+        "other": 5,
+        "account_access": 10,
+        "agent_dispute": 10,
+        "card": 10,
+        "transfer_failed": 15,
+        "wrong_recipient": 10
+      },
+      "sha256": "633e89db9bc3cdb8f23a9e4c033f0d97da92f5fb5809d3a63d4d8ec8cbbe3f1f",
+      "labels_sha256": "ff3259b79ef9427236b6e82c4a6d81417ced26e0dd1a29a0c8b5d8191a7742a3"
+    },
+    "test": {
+      "rows": 60,
+      "families": [
+        "A01",
+        "A02",
+        "G02",
+        "G03",
+        "K03",
+        "K09",
+        "O01",
+        "O06",
+        "T04",
+        "T12",
+        "W04",
+        "W06"
+      ],
+      "by_category": {
+        "wrong_recipient": 10,
+        "other": 10,
+        "agent_dispute": 10,
+        "card": 10,
+        "transfer_failed": 10,
+        "account_access": 10
+      },
+      "sha256": "b3864c39c5d124d0c964033e4182552f7c5294e77122d843fe2ce285d32df080",
+      "labels_sha256": "1aabfbb49fbcff2171d36fad5c2b63795161250648a661a5ea97bec67a8227b4"
+    }
+  }
+}

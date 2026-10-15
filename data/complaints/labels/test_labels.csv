@@ -1,0 +1,61 @@
+complaint_id,family_id,category,secondary_category,priority,department,transaction_id,amount,date,security_risk,expect_review,hard_type
+TEST-W06-5,W06,wrong_recipient,,high,النزاعات والاسترداد,15471476,300000,,0,0,
+TEST-W04-1,W04,wrong_recipient,,high,النزاعات والاسترداد,16492611,15000,,0,1,similar_names
+TEST-W06-4,W06,wrong_recipient,,high,النزاعات والاسترداد,95351823,120000,,0,0,
+TEST-W06-1,W06,wrong_recipient,,high,النزاعات والاسترداد,94506224,30000,,0,0,
+TEST-O01-3,O01,other,,low,خدمة الزبائن العامة,,,,0,0,
+TEST-G03-5,G03,agent_dispute,,medium,شبكة الوكلاء,,500000,2026-10-11,0,0,
+TEST-O06-4,O06,other,,low,خدمة الزبائن العامة,,,,0,1,unclear_message
+TEST-K03-5,K03,card,,medium,البطاقات,,150000,2026-09-27,0,0,
+TEST-O01-4,O01,other,,low,خدمة الزبائن العامة,,,,0,0,
+TEST-K09-4,K09,card,account_access,high,البطاقات,,,,1,1,multiple_issues
+TEST-G02-5,G02,agent_dispute,,medium,شبكة الوكلاء,,100000,,0,0,
+TEST-O01-1,O01,other,,low,خدمة الزبائن العامة,,,,0,0,
+TEST-T12-4,T12,transfer_failed,,medium,العمليات والتحويلات,,15000,2026-10-05,0,1,possible_injection
+TEST-K03-2,K03,card,,medium,البطاقات,826624647,75000,,0,0,
+TEST-W04-3,W04,wrong_recipient,,high,النزاعات والاسترداد,5688233248,35000,,0,1,similar_names
+TEST-A01-2,A01,account_access,,medium,أمن الحسابات,,,,0,0,
+TEST-G02-2,G02,agent_dispute,,medium,شبكة الوكلاء,,20000,,0,0,
+TEST-T04-5,T04,transfer_failed,,medium,العمليات والتحويلات,369768464,750000,,0,0,
+TEST-O01-2,O01,other,,low,خدمة الزبائن العامة,,,,0,0,
+TEST-T12-5,T12,transfer_failed,,medium,العمليات والتحويلات,3848326848,200000,,0,1,possible_injection
+TEST-T12-2,T12,transfer_failed,,medium,العمليات والتحويلات,5144507140,150000,,0,1,possible_injection
+TEST-O06-2,O06,other,,low,خدمة الزبائن العامة,,,,0,1,unclear_message
+TEST-K09-3,K09,card,account_access,high,البطاقات,,,,1,1,multiple_issues
+TEST-G03-4,G03,agent_dispute,,medium,شبكة الوكلاء,,75000,2026-10-09,0,0,
+TEST-A01-4,A01,account_access,,medium,أمن الحسابات,,,,0,0,
+TEST-G02-3,G02,agent_dispute,,medium,شبكة الوكلاء,,100000,2026-10-06,0,0,
+TEST-A01-3,A01,account_access,,medium,أمن الحسابات,,,,0,0,
+TEST-K09-5,K09,card,account_access,high,البطاقات,,,,1,1,multiple_issues
+TEST-O06-1,O06,other,,low,خدمة الزبائن العامة,,,,0,1,unclear_message
+TEST-O06-3,O06,other,,low,خدمة الزبائن العامة,,,,0,1,unclear_message
+TEST-T04-2,T04,transfer_failed,,medium,العمليات والتحويلات,7944738924,30000,,0,0,
+TEST-W06-3,W06,wrong_recipient,,high,النزاعات والاسترداد,1406554967,30000,,0,0,
+TEST-A02-2,A02,account_access,,medium,أمن الحسابات,,,2026-09-30,0,0,
+TEST-W04-5,W04,wrong_recipient,,high,النزاعات والاسترداد,857003538,300000,,0,1,similar_names
+TEST-G02-1,G02,agent_dispute,,medium,شبكة الوكلاء,,40000,,0,0,
+TEST-G03-2,G03,agent_dispute,,medium,شبكة الوكلاء,,40000,,0,0,
+TEST-T12-1,T12,transfer_failed,,medium,العمليات والتحويلات,,75000,2026-10-13,0,1,possible_injection
+TEST-K03-3,K03,card,,medium,البطاقات,,250000,,0,0,
+TEST-T04-1,T04,transfer_failed,,medium,العمليات والتحويلات,96322746,400000,,0,0,
+TEST-K09-2,K09,card,account_access,high,البطاقات,,,,1,1,multiple_issues
+TEST-O01-5,O01,other,,low,خدمة الزبائن العامة,,,,0,0,
+TEST-O06-5,O06,other,,low,خدمة الزبائن العامة,,,,0,1,unclear_message
+TEST-T12-3,T12,transfer_failed,,medium,العمليات والتحويلات,,100000,2026-10-09,0,1,possible_injection
+TEST-A02-5,A02,account_access,,medium,أمن الحسابات,,,,0,0,
+TEST-T04-4,T04,transfer_failed,,medium,العمليات والتحويلات,6915348760,100000,,0,0,
+TEST-W04-2,W04,wrong_recipient,,high,النزاعات والاسترداد,53971702,400000,,0,1,similar_names
+TEST-G03-1,G03,agent_dispute,,medium,شبكة الوكلاء,,60000,2026-10-01,0,0,
+TEST-A01-1,A01,account_access,,medium,أمن الحسابات,,,,0,0,
+TEST-W04-4,W04,wrong_recipient,,high,النزاعات والاسترداد,,150000,,0,1,similar_names
+TEST-K03-4,K03,card,,medium,البطاقات,,200000,2026-10-07,0,0,
+TEST-W06-2,W06,wrong_recipient,,high,النزاعات والاسترداد,,100000,2026-10-03,0,0,
+TEST-G03-3,G03,agent_dispute,,medium,شبكة الوكلاء,,150000,,0,0,
+TEST-K09-1,K09,card,account_access,high,البطاقات,,,,1,1,multiple_issues
+TEST-G02-4,G02,agent_dispute,,medium,شبكة الوكلاء,,50000,,0,0,
+TEST-A02-1,A02,account_access,,medium,أمن الحسابات,,,2026-10-08,0,0,
+TEST-T04-3,T04,transfer_failed,,medium,العمليات والتحويلات,,40000,2026-10-07,0,0,
+TEST-A01-5,A01,account_access,,medium,أمن الحسابات,,,,0,0,
+TEST-A02-3,A02,account_access,,medium,أمن الحسابات,,,,0,0,
+TEST-A02-4,A02,account_access,,medium,أمن الحسابات,,,2026-10-09,0,0,
+TEST-K03-1,K03,card,,medium,البطاقات,,200000,2026-10-07,0,0,
