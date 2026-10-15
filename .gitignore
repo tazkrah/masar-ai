@@ -6,9 +6,11 @@
 
 # local runtime
 .venv/
+local.nosync/
 __pycache__/
 *.pyc
-masar.db
+*.db
 *.db-journal
 runs/cache/
 .DS_Store
+.git.nosync/

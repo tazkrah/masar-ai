@@ -11,7 +11,11 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
 
-DB_PATH = Path(os.getenv("MASAR_DB", ROOT / "masar.db"))
+# local.nosync: iCloud ما يزامن أي مجلد اسمه ينتهي بـ .nosync. المشروع على سطح المكتب
+# (متزامن ويا iCloud)، والمزامنة كانت تعطّل قراءة المكتبات وتخرب قاعدة SQLite.
+LOCAL_DIR = ROOT / "local.nosync"
+LOCAL_DIR.mkdir(exist_ok=True)
+DB_PATH = Path(os.getenv("MASAR_DB", LOCAL_DIR / "masar.db"))
 GUIDE_PATH = ROOT / "data" / "support_guide.md"
 
 PROVIDER = os.getenv("MASAR_PROVIDER", "anthropic")
