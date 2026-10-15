@@ -64,7 +64,7 @@ def score(results, labels, threshold):
         pairs.append((g["category"], r["category"]))
         conf[g["category"]][r["category"]] += 1
         ok_cat = g["category"] == r["category"]
-        lenient += ok_cat or (g["secondary_category"] and r["category"] == g["secondary_category"])
+        lenient += ok_cat or (bool(g["secondary_category"]) and r["category"] == g["secondary_category"])
         mism = []
         for f in ("transaction_id", "amount", "date"):
             if norm(g[f]) == norm(r[f]):
