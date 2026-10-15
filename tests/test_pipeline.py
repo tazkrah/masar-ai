@@ -129,7 +129,7 @@ class ProcessTests(unittest.TestCase):
     def test_retry_backoff_then_success(self):
         calls = {"n": 0}
 
-        def flaky(*a):
+        def flaky(*a, **k):
             calls["n"] += 1
             if calls["n"] < 3:
                 raise llm._Retry("429", None)

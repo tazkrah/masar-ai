@@ -146,7 +146,8 @@ batch_id = st.session_state.get("batch")
 if not batch_id:
     st.markdown("#### ابدأ برفع ملف")
     st.markdown("الملف لازم يكون CSV بيه عمود اسمه `message` للرسالة. أعمدة اختيارية: `complaint_id`، `received_at`، `channel`. "
-                "بيانات تجريبية جاهزة بمجلد `data/complaints/`.")
+                "بيانات تجريبية: `data/complaints/` (مولّدة بالموديل، بعد تشغيل `./run.sh generate`) "
+                "أو `data/template_complaints/` (قوالب لاختبار الكود).")
     st.stop()
 
 with db.connect() as conn:

@@ -69,14 +69,14 @@ def _client(provider):
     return c
 
 
-def _anthropic_call(system, user, schema, max_tokens, model):
+def _anthropic_call(system, user, schema, max_tokens, model, temperature=0):
     import anthropic
 
     client = _client("anthropic")
     kwargs = dict(
         model=model,
         max_tokens=max_tokens,
-        temperature=0,
+        temperature=temperature,
         system=system,
         messages=[{"role": "user", "content": user}],
     )
@@ -109,7 +109,7 @@ def _anthropic_call(system, user, schema, max_tokens, model):
     return text, resp.usage.input_tokens, resp.usage.output_tokens
 
 
-def _openai_compat_call(provider, system, user, schema, max_tokens, model):
+def _openai_compat_call(provider, system, user, schema, max_tokens, model, temperature=0):
     import openai
 
     client = _client(provider)
@@ -122,7 +122,7 @@ def _openai_compat_call(provider, system, user, schema, max_tokens, model):
         resp = client.chat.completions.create(
             model=model,
             max_tokens=max_tokens,
-            temperature=0,
+            temperature=temperature,
             messages=[{"role": "system", "content": sys}, {"role": "user", "content": user}],
             **kwargs,
         )
@@ -155,7 +155,7 @@ def _retry_after(e):
 
 
 def call(system, user, schema=None, max_tokens=1024, provider=None, model=None,
-         max_attempts=5, base_delay=2.0, max_delay=60.0, sleep=time.sleep) -> LLMResult:
+         max_attempts=5, base_delay=2.0, max_delay=60.0, sleep=time.sleep, temperature=0) -> LLMResult:
     """استدعاء واحد مع إعادة محاولة بفواصل تزيد تدريجياً للأخطاء المؤقتة فقط."""
     provider = provider or config.PROVIDER
     model = model or config.MODEL
@@ -164,9 +164,9 @@ def call(system, user, schema=None, max_tokens=1024, provider=None, model=None,
         t0 = time.monotonic()
         try:
             if provider == "anthropic":
-                text, tin, tout = _anthropic_call(system, user, schema, max_tokens, model)
+                text, tin, tout = _anthropic_call(system, user, schema, max_tokens, model, temperature)
             else:
-                text, tin, tout = _openai_compat_call(provider, system, user, schema, max_tokens, model)
+                text, tin, tout = _openai_compat_call(provider, system, user, schema, max_tokens, model, temperature)
         except _Retry as r:
             last = r
             if attempt == max_attempts - 1:

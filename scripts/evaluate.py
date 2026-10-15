@@ -1,6 +1,7 @@
 """تقييم النظام على مجموعة بيانات ومقارنته بالإجابات الصحيحة.
 
-    python scripts/evaluate.py --split dev                 # التطوير
+    python scripts/evaluate.py --split dev                 # التطوير (البيانات المولّدة بالموديل)
+    python scripts/evaluate.py --split dev --dataset template   # بيانات القوالب (لاختبار الكود)
     python scripts/evaluate.py --split dev --limit 10      # تجربة صغيرة أولاً
     python scripts/evaluate.py --split calib --sweep       # ضبط حد الثقة
     python scripts/evaluate.py --split test --final        # الاختبار النهائي (مرة وحدة بالنهاية)
@@ -20,15 +21,19 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from masar import config, db, ingest, llm, pipeline  # noqa: E402
 
-DATA = ROOT / "data" / "complaints"
+DATASETS = {"llm": ROOT / "data" / "complaints", "template": ROOT / "data" / "template_complaints"}
 RUNS = ROOT / "runs"  # التقارير (تنرفع لـ GitHub)
 RUN_DBS = config.LOCAL_DIR / "runs"  # قواعد بيانات التشغيل (محلية فقط)
 PRICES = {"claude-sonnet-4-6": (3.0, 15.0)}  # دولار لكل مليون توكن (إدخال، إخراج)
 
 
-def load(split):
-    rows, _ = ingest.parse_csv((DATA / f"{split}.csv").read_bytes())
-    labels = {r["complaint_id"]: r for r in csv.DictReader((DATA / "labels" / f"{split}_labels.csv").open(encoding="utf-8"))}
+def load(split, dataset):
+    data = DATASETS[dataset]
+    if not (data / f"{split}.csv").exists():
+        sys.exit("البيانات المولّدة بالموديل ما موجودة بعد. شغّل: ./run.sh generate" if dataset == "llm"
+                 else f"ما لگينا {data / f'{split}.csv'}")
+    rows, _ = ingest.parse_csv((data / f"{split}.csv").read_bytes())
+    labels = {r["complaint_id"]: r for r in csv.DictReader((data / "labels" / f"{split}_labels.csv").open(encoding="utf-8"))}
     return rows, labels
 
 
@@ -134,6 +139,7 @@ def sweep(results, labels):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--split", choices=["dev", "calib", "test"], required=True)
+    ap.add_argument("--dataset", choices=list(DATASETS), default="llm")
     ap.add_argument("--limit", type=int)
     ap.add_argument("--no-drafts", action="store_true")
     ap.add_argument("--workers", type=int, default=4)
@@ -150,7 +156,7 @@ def main():
     if not ok:
         sys.exit(f"ما لگينا {env}. انسخ .env.example إلى .env وحط المفتاح.")
 
-    rows, labels = load(args.split)
+    rows, labels = load(args.split, args.dataset)
     if args.limit:
         rows = rows[: args.limit]
 
@@ -162,7 +168,7 @@ def main():
             batch_id = conn.execute("SELECT MAX(id) FROM batches").fetchone()[0]
     else:
         RUN_DBS.mkdir(exist_ok=True)
-        db_path = RUN_DBS / f"{args.split}-{stamp}.db"
+        db_path = RUN_DBS / f"{args.dataset}-{args.split}-{stamp}.db"
         db.init(db_path)
         with db.connect(db_path) as conn:
             batch_id, _ = db.create_batch(conn, f"{args.split}.csv", rows, [])
@@ -181,14 +187,14 @@ def main():
 
     report = score(results, labels, config.CONFIDENCE_THRESHOLD)
     report.update({
-        "split": args.split, "provider": config.PROVIDER, "model": config.MODEL,
+        "split": args.split, "dataset": args.dataset, "provider": config.PROVIDER, "model": config.MODEL,
         "prompt_version": config.PROMPT_VERSION, "drafts": not args.no_drafts,
         "wall_seconds": round(time.time() - t0, 1), "db": str(db_path.relative_to(ROOT)),
         "forbidden_in_drafts": sum("draft_forbidden_phrase" in r["review_reasons"] for r in results if r["status"] == "done"),
     })
     if args.sweep:
         report["sweep"] = sweep(results, labels)
-    out = RUNS / f"{args.split}-{stamp}.json"
+    out = RUNS / f"{args.dataset}-{args.split}-{stamp}.json"
     out.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     if args.split == "test":
         with (RUNS / "test_runs.log").open("a", encoding="utf-8") as fh:
