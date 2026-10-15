@@ -1,0 +1,14 @@
+# secrets
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+
+# local runtime
+.venv/
+__pycache__/
+*.pyc
+masar.db
+*.db-journal
+runs/cache/
+.DS_Store
