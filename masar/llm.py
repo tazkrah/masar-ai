@@ -116,7 +116,7 @@ RATE_HEADERS = ("x-ratelimit-limit-requests", "x-ratelimit-remaining-requests", 
                 "x-ratelimit-limit-tokens", "x-ratelimit-remaining-tokens", "x-ratelimit-reset-tokens")
 
 
-def _openai_compat_call(provider, system, user, schema, max_tokens, model, temperature=0):
+def _openai_compat_call(provider, system, user, schema, max_tokens, model, temperature=0, reasoning_effort=None):
     import openai
 
     client = _client(provider)
@@ -130,7 +130,7 @@ def _openai_compat_call(provider, system, user, schema, max_tokens, model, tempe
         sys += "\n\nرجّع JSON فقط يطابق هذا المخطط:\n" + json.dumps(schema, ensure_ascii=False)
         kwargs["response_format"] = {"type": "json_object"}
     if provider == "groq" and "gpt-oss" in model:
-        kwargs["reasoning_effort"] = config.REASONING_EFFORT
+        kwargs["reasoning_effort"] = reasoning_effort or config.REASONING_EFFORT
         kwargs["extra_body"] = {"include_reasoning": False}  # خاص بـ Groq: التفكير ما نحتاجه بالجواب
     try:
         raw = client.chat.completions.with_raw_response.create(
@@ -194,7 +194,8 @@ def _retry_after(e):
 
 
 def call(system, user, schema=None, max_tokens=1024, provider=None, model=None,
-         max_attempts=5, base_delay=2.0, max_delay=60.0, sleep=time.sleep, temperature=0) -> LLMResult:
+         max_attempts=5, base_delay=2.0, max_delay=60.0, sleep=time.sleep, temperature=0,
+         reasoning_effort=None) -> LLMResult:
     """استدعاء واحد مع إعادة محاولة بفواصل تزيد تدريجياً للأخطاء المؤقتة فقط."""
     provider = provider or config.PROVIDER
     model = model or config.MODEL
@@ -205,7 +206,8 @@ def call(system, user, schema=None, max_tokens=1024, provider=None, model=None,
             if provider == "anthropic":
                 text, tin, tout = _anthropic_call(system, user, schema, max_tokens, model, temperature)
             else:
-                text, tin, tout = _openai_compat_call(provider, system, user, schema, max_tokens, model, temperature)
+                text, tin, tout = _openai_compat_call(provider, system, user, schema, max_tokens, model, temperature,
+                                                      reasoning_effort)
         except _Retry as r:
             last = r
             if attempt == max_attempts - 1:

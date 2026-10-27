@@ -40,7 +40,8 @@ SEED = 20261016
 PER_SCENARIO = 5
 MAX_ROUNDS = 3
 TEMPERATURE = 1.0
-GEN_PROMPT_VERSION = "gen-v2"
+GEN_PROMPT_VERSION = "gen-v3"
+GEN_REASONING_EFFORT = os.getenv("MASAR_GEN_REASONING_EFFORT", "medium")
 MAX_TOKENS = 3000  # يكفي لخمس رسائل، وما يتجاوز حد التوكنات بالدقيقة بالخطة المجانية
 SIMILARITY_LIMIT = 0.6
 OUT = ROOT / "data" / "complaints"
@@ -51,6 +52,11 @@ SYSTEM = """أنت تساعد فريق يبني نظام دعم تجريبي ل�
 
 اكتب كل رسالة مثل ما يكتبها زبون حقيقي: لهجة عراقية مو فصحى، طبيعية، بدون شرح أو تعليق منك.
 كل رسالة لازم تختلف عن الباقي بالبنية والمفردات وترتيب الكلام، مو نفس الجملة مع تبديل الأرقام أو الأسماء. ناس مختلفين يكتبون بطرق مختلفة: واحد يبدي بالمشكلة، واحد يحچي القصة، واحد يسأل سؤال، واحد يكتب كلمتين بس.
+
+اللهجة: عراقية بغدادية يومية، مثل ما يكتب الناس بالواتساب. استخدم مفردات مثل: شلون، شنو، ليش، اكو، ماكو، گال، يگول، دا، كلش، وياي، لهسه، للحين، بعد ما، صارلي، مو، هيچ، شسوي، دخيلكم.
+لا تستخدم فصحى رسمية (يرجى، الرجاء، نرجو، المتلقي، تجدر الإشارة) ولا لهجات ثانية (مش، ايش، شو، ليه، عايز، بدي، هيك، كده، ازاي، لسا).
+
+كل رسالة لازم يبين بيها تفصيل السيناريو بكلام الزبون نفسه (مثلاً إذا السيناريو "التطبيق طلّع التحويل ناجح"، الرسالة تذكر إنه طلع ناجح)، إلا إذا السيناريو يگول إن الرسالة مبهمة أو بدون تفاصيل.
 
 قواعد إلزامية:
 1. أي معلومة نعطيك إياها بين «» تنكتب بالرسالة حرفياً بنفس الشكل والأرقام، بدون علامات «».
@@ -147,6 +153,12 @@ def user_prompt(scen, variants):
     return "\n".join(lines)
 
 
+NON_IRAQI = ["يرجى", "الرجاء", "نرجو", "مش", "ايش", "إيش", "شو", "ليه", "عايز", "عاوز", "بدي", "هيك",
+             "كده", "ازاي", "إزاي", "لسا", "دلوقتي", "متلقي", "المتلقي"]
+# نسمح بالسوابق العربية الشائعة (و، ف، ب، ل، ال، لل، وال، بال) حتى "للمتلقي" و"ومش" تنمسك
+_NON_IRAQI_RE = re.compile(r"(?<!\w)(?:وال|بال|لل|ال|و|ف|ب|ل)?(" + "|".join(map(re.escape, NON_IRAQI)) + r")(?!\w)")
+
+
 def verify(text, given, seen):
     """يرجع سبب الرفض أو None."""
     t = (text or "").strip()
@@ -166,6 +178,9 @@ def verify(text, given, seen):
     for w in TIME_WORDS:
         if re.search(rf"(^|[\s،,.!؟?]|[وفب]){re.escape(w)}", stripped):
             return f"تعبير وقت زايد: {w}"
+    m = _NON_IRAQI_RE.search(t)
+    if m:
+        return f"مو لهجة عراقية: {m.group(1)}"
     if t in seen:
         return "مكررة"
     return None
@@ -197,7 +212,8 @@ def generate_scenario(scen, variants, log, seen, texts, save):
             break
         batch = [variants[i] for i in pending]
         res = llm.call(SYSTEM, user_prompt(scen, batch), schema=SCHEMA, max_tokens=MAX_TOKENS,
-                       provider=GEN_PROVIDER, model=GEN_MODEL, temperature=TEMPERATURE)
+                       provider=GEN_PROVIDER, model=GEN_MODEL, temperature=TEMPERATURE,
+                       reasoning_effort=GEN_REASONING_EFFORT)
         usage["calls"] += 1
         usage["input"] += res.input_tokens or 0
         usage["output"] += res.output_tokens or 0
@@ -247,7 +263,8 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "labels").mkdir(exist_ok=True)
     progress_path = OUT / "progress.json"
-    meta = {"seed": SEED, "prompt_version": GEN_PROMPT_VERSION, "provider": GEN_PROVIDER, "model": GEN_MODEL}
+    meta = {"seed": SEED, "prompt_version": GEN_PROMPT_VERSION, "provider": GEN_PROVIDER, "model": GEN_MODEL,
+            "reasoning_effort": GEN_REASONING_EFFORT}
     if progress_path.exists():
         progress = json.loads(progress_path.read_text(encoding="utf-8"))
         if progress["meta"] != meta and not args.force:
@@ -256,6 +273,13 @@ def main():
     else:
         progress = {"meta": meta, "texts": {}, "usage": {"calls": 0, "input": 0, "output": 0, "rejected": 0}}
     texts_by = {s["id"]: progress["texts"].get(s["id"], [None] * PER_SCENARIO) for s in S}
+    # نعيد فحص المحفوظ بالفحوصات الحالية: اللي ما يعدّي ينعاد توليده، والباقي يبقى مثل ما هو
+    for s in S:
+        for i, t in enumerate(texts_by[s["id"]]):
+            why = t and verify(t, plans[s["id"]][i]["given"], set())
+            if why:
+                print(f"إعادة فحص: {s['id']}-{i + 1} انرفضت ({why})، راح تنكتب من جديد")
+                texts_by[s["id"]][i] = None
     seen = {t for v in texts_by.values() for t in v if t}
 
     def save(usage=None):
@@ -312,6 +336,7 @@ def main():
         "source": "llm",
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "provider": GEN_PROVIDER, "model": GEN_MODEL, "temperature": TEMPERATURE,
+        "reasoning_effort": GEN_REASONING_EFFORT,
         "prompt_version": GEN_PROMPT_VERSION,
         "system_prompt_sha256": hashlib.sha256(SYSTEM.encode()).hexdigest(),
         "seed": SEED, "per_scenario": PER_SCENARIO, "usage": totals, "splits": {},

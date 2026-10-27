@@ -1,0 +1,125 @@
+{
+  "source": "llm",
+  "generated_at": "2026-10-27T16:13:51",
+  "provider": "groq",
+  "model": "openai/gpt-oss-120b",
+  "temperature": 1.0,
+  "reasoning_effort": "medium",
+  "prompt_version": "gen-v3",
+  "system_prompt_sha256": "5e82918fbad7f6623c18b92f5bba49c9305400a639b48dab50b3441e6bd446c7",
+  "seed": 20261016,
+  "per_scenario": 5,
+  "usage": {
+    "calls": 106,
+    "input": 98401,
+    "output": 116096,
+    "rejected": 55
+  },
+  "splits": {
+    "dev": {
+      "rows": 180,
+      "scenarios": [
+        "A02",
+        "A03",
+        "A04",
+        "A07",
+        "A08",
+        "A10",
+        "G01",
+        "G02",
+        "G03",
+        "G07",
+        "G08",
+        "K02",
+        "K03",
+        "K04",
+        "K07",
+        "K08",
+        "K10",
+        "O01",
+        "O02",
+        "O03",
+        "O04",
+        "O08",
+        "O09",
+        "T01",
+        "T02",
+        "T04",
+        "T06",
+        "T08",
+        "T10",
+        "T11",
+        "W01",
+        "W02",
+        "W05",
+        "W07",
+        "W08",
+        "W10"
+      ],
+      "by_category": {
+        "account_access": 30,
+        "card": 30,
+        "agent_dispute": 25,
+        "transfer_failed": 35,
+        "other": 30,
+        "wrong_recipient": 30
+      },
+      "sha256": "1b8dcc62e9654306164b60c6f399b2cfb34866388c5348b4422dd0eb191ee595",
+      "labels_sha256": "1e39983c2a6f0808f5b50f939733965dcc0260d4b1f4a5548eec3417f2e55093"
+    },
+    "calib": {
+      "rows": 60,
+      "scenarios": [
+        "A05",
+        "A09",
+        "G04",
+        "G09",
+        "K01",
+        "K05",
+        "O05",
+        "T05",
+        "T07",
+        "T09",
+        "W03",
+        "W09"
+      ],
+      "by_category": {
+        "agent_dispute": 10,
+        "other": 5,
+        "transfer_failed": 15,
+        "card": 10,
+        "account_access": 10,
+        "wrong_recipient": 10
+      },
+      "sha256": "c117ea23bee85fbb97b1553ab625559556c317ac1f3ba56aaddd42d0b447b1ae",
+      "labels_sha256": "96afb15776754e922b221a9214d627bf92ae13a55ce4e6a2be9ebffa35ec6618"
+    },
+    "test": {
+      "rows": 60,
+      "scenarios": [
+        "A01",
+        "A06",
+        "G05",
+        "G06",
+        "K06",
+        "K09",
+        "O06",
+        "O07",
+        "T03",
+        "T12",
+        "W04",
+        "W06"
+      ],
+      "by_category": {
+        "transfer_failed": 10,
+        "account_access": 10,
+        "wrong_recipient": 10,
+        "other": 10,
+        "card": 10,
+        "agent_dispute": 10
+      },
+      "sha256": "5639acd6a510223d9edc46df6867f2d4b2c957132684249918d195ac6ad0c773",
+      "labels_sha256": "4675fe0fbffba9c246d75e600d8bb2e73a2dcf1f805a1d82ae50ef9a06c29bc8"
+    }
+  }
+}

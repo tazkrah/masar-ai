@@ -1,0 +1,61 @@
+complaint_id,family_id,category,secondary_category,priority,department,transaction_id,amount,date,security_risk,expect_review,hard_type
+CALIB-G04-1,G04,agent_dispute,,medium,شبكة الوكلاء,,100000,,0,0,
+CALIB-O05-1,O05,other,,low,خدمة الزبائن العامة,,,,0,1,unclear_message
+CALIB-G04-4,G04,agent_dispute,,medium,شبكة الوكلاء,,750000,,0,0,
+CALIB-T09-3,T09,transfer_failed,,medium,العمليات والتحويلات,,20000,2026-10-08,0,0,
+CALIB-K01-3,K01,card,,medium,البطاقات,,,2026-10-08,0,0,
+CALIB-K05-2,K05,card,,high,البطاقات,,150000,2026-10-07,1,0,
+CALIB-A05-3,A05,account_access,,high,أمن الحسابات,,,,1,0,
+CALIB-T09-2,T09,transfer_failed,,medium,العمليات والتحويلات,810842147,200000,,0,0,
+CALIB-O05-3,O05,other,,low,خدمة الزبائن العامة,,,,0,1,unclear_message
+CALIB-W03-4,W03,wrong_recipient,,high,النزاعات والاسترداد,,15000,2026-10-04,0,0,
+CALIB-T07-1,T07,transfer_failed,,medium,العمليات والتحويلات,,,,0,0,
+CALIB-A05-5,A05,account_access,,high,أمن الحسابات,,,2026-10-08,1,0,
+CALIB-K01-2,K01,card,,medium,البطاقات,,,2026-10-05,0,0,
+CALIB-W09-1,W09,wrong_recipient,agent_dispute,high,النزاعات والاسترداد,121165729,15000,,0,1,multiple_issues
+CALIB-A09-2,A09,account_access,card,medium,أمن الحسابات,,,2026-10-01,0,1,multiple_issues
+CALIB-O05-5,O05,other,,low,خدمة الزبائن العامة,,,,0,1,unclear_message
+CALIB-K01-4,K01,card,,medium,البطاقات,,,2026-09-28,0,0,
+CALIB-T07-2,T07,transfer_failed,,medium,العمليات والتحويلات,,,,0,0,
+CALIB-O05-4,O05,other,,low,خدمة الزبائن العامة,,,,0,1,unclear_message
+CALIB-G04-5,G04,agent_dispute,,medium,شبكة الوكلاء,,250000,2026-10-05,0,0,
+CALIB-A05-1,A05,account_access,,high,أمن الحسابات,,,2026-09-29,1,0,
+CALIB-G09-2,G09,agent_dispute,,medium,شبكة الوكلاء,,400000,,0,0,
+CALIB-A09-5,A09,account_access,card,medium,أمن الحسابات,,,,0,1,multiple_issues
+CALIB-W03-1,W03,wrong_recipient,,high,النزاعات والاسترداد,6232907800,500000,2026-10-06,0,0,
+CALIB-W03-3,W03,wrong_recipient,,high,النزاعات والاسترداد,,40000,2026-10-04,0,0,
+CALIB-W09-2,W09,wrong_recipient,agent_dispute,high,النزاعات والاسترداد,,750000,,0,1,multiple_issues
+CALIB-T07-3,T07,transfer_failed,,medium,العمليات والتحويلات,,,,0,0,
+CALIB-T09-4,T09,transfer_failed,,medium,العمليات والتحويلات,45938409,,,0,0,
+CALIB-A05-4,A05,account_access,,high,أمن الحسابات,,,2026-10-11,1,0,
+CALIB-T07-5,T07,transfer_failed,,medium,العمليات والتحويلات,,,,0,0,
+CALIB-W09-5,W09,wrong_recipient,agent_dispute,high,النزاعات والاسترداد,,300000,,0,1,multiple_issues
+CALIB-K05-5,K05,card,,high,البطاقات,82717783,400000,2026-10-05,1,0,
+CALIB-G04-2,G04,agent_dispute,,medium,شبكة الوكلاء,,400000,,0,0,
+CALIB-A09-1,A09,account_access,card,medium,أمن الحسابات,,,2026-09-29,0,1,multiple_issues
+CALIB-A09-4,A09,account_access,card,medium,أمن الحسابات,,,2026-09-28,0,1,multiple_issues
+CALIB-T05-1,T05,transfer_failed,,medium,العمليات والتحويلات,,40000,2026-09-25,0,0,
+CALIB-K01-5,K01,card,,medium,البطاقات,,,,0,0,
+CALIB-G04-3,G04,agent_dispute,,medium,شبكة الوكلاء,,,,0,0,
+CALIB-G09-3,G09,agent_dispute,,medium,شبكة الوكلاء,,500000,2026-09-29,0,0,
+CALIB-T05-5,T05,transfer_failed,,medium,العمليات والتحويلات,3059330089,40000,2026-10-01,0,0,
+CALIB-T09-5,T09,transfer_failed,,medium,العمليات والتحويلات,375172711,,2026-10-02,0,0,
+CALIB-A09-3,A09,account_access,card,medium,أمن الحسابات,,,2026-09-24,0,1,multiple_issues
+CALIB-G09-5,G09,agent_dispute,,medium,شبكة الوكلاء,,60000,,0,0,
+CALIB-K05-4,K05,card,,high,البطاقات,51841931,35000,,1,0,
+CALIB-W03-2,W03,wrong_recipient,,high,النزاعات والاسترداد,,40000,,0,0,
+CALIB-T07-4,T07,transfer_failed,,medium,العمليات والتحويلات,,,,0,0,
+CALIB-W03-5,W03,wrong_recipient,,high,النزاعات والاسترداد,421412629,,2026-10-12,0,0,
+CALIB-G09-1,G09,agent_dispute,,medium,شبكة الوكلاء,,,,0,0,
+CALIB-T05-4,T05,transfer_failed,,medium,العمليات والتحويلات,1492991018,35000,2026-10-04,0,0,
+CALIB-O05-2,O05,other,,low,خدمة الزبائن العامة,,,,0,1,unclear_message
+CALIB-W09-3,W09,wrong_recipient,agent_dispute,high,النزاعات والاسترداد,476077219,40000,2026-10-05,0,1,multiple_issues
+CALIB-K05-3,K05,card,,high,البطاقات,7282749460,60000,2026-10-10,1,0,
+CALIB-A05-2,A05,account_access,,high,أمن الحسابات,,,2026-10-09,1,0,
+CALIB-K05-1,K05,card,,high,البطاقات,,,,1,0,
+CALIB-T05-2,T05,transfer_failed,,medium,العمليات والتحويلات,19110134,120000,2026-09-26,0,0,
+CALIB-T09-1,T09,transfer_failed,,medium,العمليات والتحويلات,6979593803,300000,2026-10-03,0,0,
+CALIB-G09-4,G09,agent_dispute,,medium,شبكة الوكلاء,,40000,2026-09-29,0,0,
+CALIB-T05-3,T05,transfer_failed,,medium,العمليات والتحويلات,230952407,750000,,0,0,
+CALIB-K01-1,K01,card,,medium,البطاقات,,,2026-10-07,0,0,
+CALIB-W09-4,W09,wrong_recipient,agent_dispute,high,النزاعات والاسترداد,211961486,,2026-10-03,0,1,multiple_issues

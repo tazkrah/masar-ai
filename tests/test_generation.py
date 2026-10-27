@@ -30,6 +30,12 @@ class GenerationTests(unittest.TestCase):
         self.assertIn("تعبير وقت", g.verify("حولت 50 الف امس وما وصلت", given, set()))
         self.assertIn("تعبير وقت", g.verify("هسه حولت 50 الف وما وصلت", given, set()))
 
+    def test_rejects_non_iraqi_phrasing(self):
+        self.assertIn("مو لهجة عراقية", g.verify("التحويل ما وصل، يرجى التحقق", {}, set()))
+        self.assertIn("مو لهجة عراقية", g.verify("قلبي مش مرتاح والتحويل ما وصل", {}, set()))
+        self.assertIn("مو لهجة عراقية", g.verify("المبلغ ما وصل للمتلقي بعد", {}, set()))
+        self.assertIsNone(g.verify("شوف دخيلكم التحويل ما وصل لهسه", {}, set()))  # شوف مو شو
+
     def test_date_expression_allowed_only_when_given(self):
         given = {"date": "قبل يومين"}
         self.assertIsNone(g.verify("الحساب انقفل قبل يومين وما اگدر ادخل", given, set()))
