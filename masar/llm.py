@@ -131,7 +131,7 @@ def _openai_compat_call(provider, system, user, schema, max_tokens, model, tempe
         kwargs["response_format"] = {"type": "json_object"}
     if provider == "groq" and "gpt-oss" in model:
         kwargs["reasoning_effort"] = config.REASONING_EFFORT
-        kwargs["include_reasoning"] = False  # التفكير ما نحتاجه بالجواب
+        kwargs["extra_body"] = {"include_reasoning": False}  # خاص بـ Groq: التفكير ما نحتاجه بالجواب
     try:
         raw = client.chat.completions.with_raw_response.create(
             model=model,

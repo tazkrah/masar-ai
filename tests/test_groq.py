@@ -37,6 +37,8 @@ class GroqTests(unittest.TestCase):
         self.assertEqual(kw["response_format"]["type"], "json_schema")
         self.assertTrue(kw["response_format"]["json_schema"]["strict"])
         self.assertEqual(kw["reasoning_effort"], config.REASONING_EFFORT)
+        self.assertEqual(kw["extra_body"], {"include_reasoning": False})
+        self.assertNotIn("include_reasoning", kw)  # مو باراميتر معروف بمكتبة openai
         self.assertEqual(res.data, {"a": 1})
         self.assertEqual(llm.last_rate_limits.get("x-ratelimit-remaining-tokens"), "7000")
 
