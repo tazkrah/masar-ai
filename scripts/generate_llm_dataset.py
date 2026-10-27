@@ -9,7 +9,10 @@
   والموديل يكتب الرسالة حولها. فالإجابة الصحيحة معروفة من الكود، مو من تقدير الموديل.
 - كل رسالة تنفحص: المعلومات المعطاة موجودة حرفياً، وما في أرقام أو تعابير وقت زايدة.
   الرسالة اللي تفشل تنعاد كتابتها (لحد 3 جولات). كل الاتصالات تنسجل بـ generation_log.jsonl.
+- رسالة تشبه رسالة ثانية بنفس السيناريو (نفس الكلمات تقريباً مع تبديل الأرقام) تنرفض.
 - التقسيم بالسيناريو: 180 تطوير / 60 ضبط / 60 اختبار، والسيناريوهات المتشابهة بنفس المجموعة.
+- التقدم ينحفظ بعد كل سيناريو (progress.json). إذا خلص حد الاستخدام، نعيد تشغيل نفس الأمر ويكمل
+  من وين ما وقف بدون ما يعيد توليد المقبول.
 
 الموديل: MASAR_GEN_MODEL و MASAR_GEN_PROVIDER بملف .env (الافتراضي نفس موديل النظام).
 """
@@ -37,14 +40,17 @@ SEED = 20261016
 PER_SCENARIO = 5
 MAX_ROUNDS = 3
 TEMPERATURE = 1.0
-GEN_PROMPT_VERSION = "gen-v1"
+GEN_PROMPT_VERSION = "gen-v2"
+MAX_TOKENS = 3000  # يكفي لخمس رسائل، وما يتجاوز حد التوكنات بالدقيقة بالخطة المجانية
+SIMILARITY_LIMIT = 0.6
 OUT = ROOT / "data" / "complaints"
 GEN_PROVIDER = os.getenv("MASAR_GEN_PROVIDER", config.PROVIDER)
 GEN_MODEL = os.getenv("MASAR_GEN_MODEL", config.MODEL)
 
 SYSTEM = """أنت تساعد فريق يبني نظام دعم تجريبي لمحفظة إلكترونية عراقية. نحتاج بيانات اختبار وهمية: رسائل شكاوى يكتبها زبائن عراقيين بالتطبيق أو الواتساب.
 
-اكتب كل رسالة مثل ما يكتبها زبون حقيقي: لهجة عراقية مو فصحى، طبيعية، بدون شرح أو تعليق منك. نوّع بين الرسائل بالصياغة والترتيب والمفردات، وما تكرر نفس الجمل بين رسالة وثانية.
+اكتب كل رسالة مثل ما يكتبها زبون حقيقي: لهجة عراقية مو فصحى، طبيعية، بدون شرح أو تعليق منك.
+كل رسالة لازم تختلف عن الباقي بالبنية والمفردات وترتيب الكلام، مو نفس الجملة مع تبديل الأرقام أو الأسماء. ناس مختلفين يكتبون بطرق مختلفة: واحد يبدي بالمشكلة، واحد يحچي القصة، واحد يسأل سؤال، واحد يكتب كلمتين بس.
 
 قواعد إلزامية:
 1. أي معلومة نعطيك إياها بين «» تنكتب بالرسالة حرفياً بنفس الشكل والأرقام، بدون علامات «».
@@ -165,15 +171,32 @@ def verify(text, given, seen):
     return None
 
 
-def generate_scenario(scen, variants, log, seen):
-    texts = [None] * len(variants)
-    pending = list(range(len(variants)))
+def _words(text, given):
+    t = text
+    for v in given.values():
+        t = t.replace(v, " ")
+    return {w for w in re.findall(r"[^\W\d_]+", t) if len(w) > 1}
+
+
+def too_similar(text, given, others):
+    """تشابه الكلمات (Jaccard) ويا رسائل نفس السيناريو، بعد شيل المعلومات المعطاة."""
+    a = _words(text, given)
+    for other_text, other_given in others:
+        b = _words(other_text, other_given)
+        if a and b and len(a & b) / len(a | b) > SIMILARITY_LIMIT:
+            return True
+    return False
+
+
+def generate_scenario(scen, variants, log, seen, texts, save):
+    """يكمل الرسائل الناقصة بالسيناريو. texts فيها المقبول من قبل (أو None)."""
+    pending = [i for i, t in enumerate(texts) if t is None]
     usage = {"calls": 0, "input": 0, "output": 0, "rejected": 0}
     for rnd in range(1, MAX_ROUNDS + 1):
         if not pending:
             break
         batch = [variants[i] for i in pending]
-        res = llm.call(SYSTEM, user_prompt(scen, batch), schema=SCHEMA, max_tokens=6000,
+        res = llm.call(SYSTEM, user_prompt(scen, batch), schema=SCHEMA, max_tokens=MAX_TOKENS,
                        provider=GEN_PROVIDER, model=GEN_MODEL, temperature=TEMPERATURE)
         usage["calls"] += 1
         usage["input"] += res.input_tokens or 0
@@ -183,6 +206,9 @@ def generate_scenario(scen, variants, log, seen):
         for j, idx in enumerate(pending, 1):
             text = (items.get(j) or "").strip()
             why = verify(text, variants[idx]["given"], seen)
+            others = [(t, variants[k]["given"]) for k, t in enumerate(texts) if t]
+            if not why and too_similar(text, variants[idx]["given"], others):
+                why = "تشبه رسالة ثانية بنفس السيناريو"
             log.write(json.dumps({"scenario": scen["id"], "round": rnd, "slot": idx + 1, "text": text,
                                   "given": variants[idx]["given"], "rejected": why}, ensure_ascii=False) + "\n")
             if why:
@@ -191,11 +217,10 @@ def generate_scenario(scen, variants, log, seen):
             else:
                 texts[idx] = text
                 seen.add(text)
+        log.flush()
         pending = still
-    if pending:
-        raise SystemExit(f"السيناريو {scen['id']}: {len(pending)} رسائل فشلت بالفحص بعد {MAX_ROUNDS} جولات. "
-                         f"شوف generation_log.jsonl وعدّل التعليمات.")
-    return texts, usage
+        save(usage)
+    return usage
 
 
 def main():
@@ -221,36 +246,68 @@ def main():
 
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "labels").mkdir(exist_ok=True)
-    rows = {"dev": [], "calib": [], "test": []}
-    totals = {"calls": 0, "input": 0, "output": 0, "rejected": 0}
-    seen = set()
-    with (OUT / "generation_log.jsonl").open("w", encoding="utf-8") as log:
-        for n, s in enumerate(S, 1):
-            print(f"\r{n}/60 {s['id']}", end="", flush=True)
-            texts, usage = generate_scenario(s, plans[s["id"]], log, seen)
-            for k in totals:
-                totals[k] += usage[k]
-            sp = splits[s["id"]]
-            for i, (text, v) in enumerate(zip(texts, plans[s["id"]]), 1):
-                cid = f"{sp.upper()}-{s['id']}-{i}"
-                tr = v["truth"]
-                rows[sp].append({
-                    "row": {"complaint_id": cid, "received_at": v["received_at"], "channel": v["channel"], "message": text},
-                    "label": {
-                        "complaint_id": cid, "family_id": s["id"], "category": s["category"],
-                        "secondary_category": s["secondary"] or "",
-                        "priority": config.priority_for(s["category"], tr["amount"], s["risk"]),
-                        "department": config.ROUTING[s["category"]],
-                        "transaction_id": tr["transaction_id"] or "",
-                        "amount": tr["amount"] if tr["amount"] is not None else "",
-                        "date": tr["date"] or "",
-                        "security_risk": int(s["risk"]),
-                        "expect_review": int(bool(s["hard"])),
-                        "hard_type": s["hard"] or "",
-                    },
-                })
-    print()
+    progress_path = OUT / "progress.json"
+    meta = {"seed": SEED, "prompt_version": GEN_PROMPT_VERSION, "provider": GEN_PROVIDER, "model": GEN_MODEL}
+    if progress_path.exists():
+        progress = json.loads(progress_path.read_text(encoding="utf-8"))
+        if progress["meta"] != meta and not args.force:
+            raise SystemExit(f"التقدم المحفوظ من إعدادات مختلفة {progress['meta']}. أضف --force للبدء من جديد.")
+        print(f"نكمل من التقدم المحفوظ: {sum(t is not None for v in progress['texts'].values() for t in v)}/300 مقبولة")
+    else:
+        progress = {"meta": meta, "texts": {}, "usage": {"calls": 0, "input": 0, "output": 0, "rejected": 0}}
+    texts_by = {s["id"]: progress["texts"].get(s["id"], [None] * PER_SCENARIO) for s in S}
+    seen = {t for v in texts_by.values() for t in v if t}
 
+    def save(usage=None):
+        if usage:
+            for k in progress["usage"]:
+                progress["usage"][k] += usage[k]
+                usage[k] = 0
+        progress["texts"] = texts_by
+        tmp = progress_path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(progress, ensure_ascii=False, indent=1), encoding="utf-8")
+        tmp.replace(progress_path)
+
+    with (OUT / "generation_log.jsonl").open("a", encoding="utf-8") as log:
+        for n, s in enumerate(S, 1):
+            if all(texts_by[s["id"]]):
+                continue
+            print(f"{n}/60 {s['id']} ...", flush=True)
+            try:
+                generate_scenario(s, plans[s["id"]], log, seen, texts_by[s["id"]], save)
+            except llm.LLMError as e:
+                save()
+                done = sum(t is not None for v in texts_by.values() for t in v)
+                raise SystemExit(f"توقف التوليد: {e}\nالتقدم محفوظ ({done}/300). شغّل نفس الأمر بعدين حتى يكمل.")
+
+    missing = {sid: sum(t is None for t in v) for sid, v in texts_by.items() if not all(v)}
+    if missing:
+        raise SystemExit(f"سيناريوهات بيها رسائل مرفوضة بعد {MAX_ROUNDS} جولات: {missing}. "
+                         f"التقدم محفوظ؛ شغّل نفس الأمر مرة ثانية حتى يحاول يكملها.")
+
+    rows = {"dev": [], "calib": [], "test": []}
+    totals = progress["usage"]
+    for s in S:
+        texts = texts_by[s["id"]]
+        sp = splits[s["id"]]
+        for i, (text, v) in enumerate(zip(texts, plans[s["id"]]), 1):
+            cid = f"{sp.upper()}-{s['id']}-{i}"
+            tr = v["truth"]
+            rows[sp].append({
+                "row": {"complaint_id": cid, "received_at": v["received_at"], "channel": v["channel"], "message": text},
+                "label": {
+                    "complaint_id": cid, "family_id": s["id"], "category": s["category"],
+                    "secondary_category": s["secondary"] or "",
+                    "priority": config.priority_for(s["category"], tr["amount"], s["risk"]),
+                    "department": config.ROUTING[s["category"]],
+                    "transaction_id": tr["transaction_id"] or "",
+                    "amount": tr["amount"] if tr["amount"] is not None else "",
+                    "date": tr["date"] or "",
+                    "security_risk": int(s["risk"]),
+                    "expect_review": int(bool(s["hard"])),
+                    "hard_type": s["hard"] or "",
+                },
+            })
     manifest = {
         "source": "llm",
         "generated_at": datetime.now().isoformat(timespec="seconds"),
@@ -279,6 +336,7 @@ def main():
             "labels_sha256": hashlib.sha256(lp.read_bytes()).hexdigest(),
         }
     (OUT / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    progress_path.unlink()
     print(json.dumps({k: manifest[k] for k in ("model", "usage")}, ensure_ascii=False))
     print({sp: m["rows"] for sp, m in manifest["splits"].items()})
 

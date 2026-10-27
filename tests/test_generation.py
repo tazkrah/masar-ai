@@ -34,6 +34,30 @@ class GenerationTests(unittest.TestCase):
         given = {"date": "قبل يومين"}
         self.assertIsNone(g.verify("الحساب انقفل قبل يومين وما اگدر ادخل", given, set()))
 
+    def test_similarity_rejects_swapped_numbers_only(self):
+        a = ("حولت 50 الف لاخوي وانخصمت من رصيدي بس ما وصلت", {"amount": "50 الف"})
+        same = "حولت ٧٥ الف لاخوي وانخصمت من رصيدي بس ما وصلت"
+        diff = "ليش فلوسي طلعت من الحساب ومحد استلمها؟ ٧٥ الف راحت"
+        self.assertTrue(g.too_similar(same, {"amount": "٧٥ الف"}, [a]))
+        self.assertFalse(g.too_similar(diff, {"amount": "٧٥ الف"}, [a]))
+
+    def test_generate_scenario_keeps_accepted_and_saves(self):
+        from unittest import mock
+        from masar import llm
+        scen = S[0]
+        variants = [{"given": {}, "style": "قصيرة"} for _ in range(3)]
+        texts = ["رسالة مقبولة من قبل عن تحويل ما وصل للاخ", None, None]
+        answers = {"items": [{"n": 1, "text": "التحويل علگ والفلوس طلعت من رصيدي ومحد استلم"},
+                             {"n": 2, "text": "شنو صار بالتحويل؟ صديقي يگول ما شاف شي وآني انخصمت"}]}
+        saves = []
+        with mock.patch.object(llm, "call", return_value=llm.LLMResult(answers, "", 1, 1, 1)) as call, \
+                open("/dev/null", "w") as log:
+            g.generate_scenario(scen, variants, log, set(), texts, saves.append)
+        self.assertIn("اكتب 2 رسائل", call.call_args.args[1])  # بس الناقصة تنطلب
+        self.assertTrue(all(texts))
+        self.assertEqual(texts[0], "رسالة مقبولة من قبل عن تحويل ما وصل للاخ")
+        self.assertEqual(len(saves), 1)
+
     def test_plan_truth_matches_given(self):
         rng = random.Random(3)
         for s in S:
