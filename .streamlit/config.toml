@@ -6,6 +6,10 @@ secondaryBackgroundColor = "#F2F6F6"
 textColor = "#1C2530"
 borderColor = "#E1E7E8"
 font = "sans-serif"
+baseRadius = "6px"
+redColor = "#B42318"
+orangeColor = "#9A6200"
+grayColor = "#5B6773"
 
 [server]
 maxUploadSize = 5
