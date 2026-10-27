@@ -1,0 +1,132 @@
+{
+  "n": 10,
+  "processed": 3,
+  "failed": 7,
+  "failures": [
+    {
+      "id": "DEV-G01-3",
+      "error": "خلص حد الاستخدام المجاني حالياً. أعد المحاولة بعد 4 دقيقة تقريباً."
+    },
+    {
+      "id": "DEV-T08-2",
+      "error": "خلص حد الاستخدام المجاني حالياً. أعد المحاولة بعد 4 دقيقة تقريباً."
+    },
+    {
+      "id": "DEV-K04-3",
+      "error": "خلص حد الاستخدام المجاني حالياً. أعد المحاولة بعد 4 دقيقة تقريباً."
+    },
+    {
+      "id": "DEV-O03-2",
+      "error": "خلص حد الاستخدام المجاني حالياً. أعد المحاولة بعد 5 دقيقة تقريباً."
+    },
+    {
+      "id": "DEV-T11-1",
+      "error": "خلص حد الاستخدام المجاني حالياً. أعد المحاولة بعد 5 دقيقة تقريباً."
+    },
+    {
+      "id": "DEV-O02-5",
+      "error": "خلص حد الاستخدام المجاني حالياً. أعد المحاولة بعد 6 دقيقة تقريباً."
+    },
+    {
+      "id": "DEV-K07-3",
+      "error": "خلص حد الاستخدام المجاني حالياً. أعد المحاولة بعد 5 دقيقة تقريباً."
+    }
+  ],
+  "category_accuracy": 0.3333333333333333,
+  "category_macro_f1": 0.16666666666666666,
+  "per_class_f1": {
+    "transfer_failed": 0.0,
+    "wrong_recipient": 0.0,
+    "account_access": 0.0,
+    "agent_dispute": 1.0,
+    "card": 0.0,
+    "other": 0.0
+  },
+  "category_accuracy_lenient_multi": 0.3333333333333333,
+  "field_exact": {
+    "transaction_id": 1.0,
+    "amount": 1.0,
+    "date": 0.6666666666666666
+  },
+  "field_exact_all3": 0.6666666666666666,
+  "priority_accuracy": 0.3333333333333333,
+  "department_accuracy_all": 0.3333333333333333,
+  "auto_routed_share": 0.6666666666666666,
+  "auto_routed_department_accuracy": 0.5,
+  "review_rate": 0.3333333333333333,
+  "hard_cases_sent_to_review": "1/1",
+  "review_reasons": {
+    "low_confidence": 1,
+    "unclear_message": 1
+  },
+  "confusion": {
+    "account_access": {
+      "other": 1
+    },
+    "card": {
+      "other": 1
+    },
+    "agent_dispute": {
+      "agent_dispute": 1
+    }
+  },
+  "threshold": 0.75,
+  "avg_latency_ms": 2264.3333333333335,
+  "tokens": {
+    "input": 7232,
+    "output": 764
+  },
+  "est_cost_usd": 0.0,
+  "errors": [
+    {
+      "id": "DEV-A10-4",
+      "family": "A10",
+      "message": "شنو هالسالفة؟ كل مرة أفتح حسابي أشوف شي مو طبيعي! ما أريد أظل أتعامل بهالمشكلة، تعبت من التأخير! أطالب توضيح فوري وإصلاح.",
+      "category": "account_access -> other",
+      "priority": "medium -> low",
+      "fields": [],
+      "confidence": 0.4,
+      "review_reasons": [
+        "low_confidence",
+        "unclear_message"
+      ],
+      "expected_review": "unclear_message",
+      "reason": "الرسالة ما بيها مشكلة محددة واضحة."
+    },
+    {
+      "id": "DEV-K10-4",
+      "family": "K10",
+      "message": "السلام عليكم، شنو طريقة تجديد البطاقة منتهية؟ شكراً.",
+      "category": "card -> other",
+      "priority": "medium -> low",
+      "fields": [],
+      "confidence": 0.97,
+      "review_reasons": [],
+      "expected_review": null,
+      "reason": "الزبون يسأل عن طريقة تجديد البطاقة المنتهية."
+    },
+    {
+      "id": "DEV-G07-5",
+      "family": "G07",
+      "message": "هلا، أودعت 2,500,000 دينار عند وكيل وما نزل بالحساب. الوكيل ما يرد عليّ والموضوع قلقني، رجاءً حلّوه بسرعة.",
+      "category": "صح",
+      "priority": "صح",
+      "fields": [
+        "date: متوقع=فارغ طلع=2026-10-03"
+      ],
+      "confidence": 0.96,
+      "review_reasons": [],
+      "expected_review": null,
+      "reason": "الإيداع عند الوكيل ما نزل بالحساب والوكيل ما يرد."
+    }
+  ],
+  "split": "dev",
+  "dataset": "llm",
+  "provider": "groq",
+  "model": "openai/gpt-oss-120b",
+  "prompt_version": "v1",
+  "drafts": true,
+  "wall_seconds": 7.5,
+  "db": "local.nosync/runs/llm-dev-20261027-164035.db",
+  "forbidden_in_drafts": 0
+}

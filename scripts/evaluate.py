@@ -167,6 +167,8 @@ def main():
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     if args.retry_run:
         db_path = Path(args.retry_run)
+        if not db_path.is_absolute():
+            db_path = (ROOT / db_path).resolve()
         with db.connect(db_path) as conn:
             batch_id = conn.execute("SELECT MAX(id) FROM batches").fetchone()[0]
     else:

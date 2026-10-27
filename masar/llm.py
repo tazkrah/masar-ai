@@ -144,7 +144,7 @@ def _openai_compat_call(provider, system, user, schema, max_tokens, model, tempe
         resp = raw.parse()
     except openai.RateLimitError as e:
         _remember_limits(getattr(e.response, "headers", {}))
-        raise _Retry("وصلنا حد الاستخدام (429).", _retry_after(e)) from e
+        raise _Retry(f"وصلنا حد الاستخدام (429): {_limit_detail(e)}", _retry_after(e)) from e
     except openai.AuthenticationError as e:
         raise LLMError(f"المفتاح مرفوض (401). تأكد من {KEY_ENV[provider]} بملف .env.", retryable=False) from e
     except openai.PermissionDeniedError as e:
@@ -168,6 +168,13 @@ def _openai_compat_call(provider, system, user, schema, max_tokens, model, tempe
     text = choice.message.content or ""
     u = resp.usage
     return text, getattr(u, "prompt_tokens", None), getattr(u, "completion_tokens", None)
+
+
+def _limit_detail(e):
+    """الجزء المفيد من رسالة Groq: أي حد (بالدقيقة/باليوم) وشگد مستخدم. ما بيها مفاتيح."""
+    msg = str(getattr(e, "message", "") or e)
+    i = msg.find(" on ")
+    return (msg[i + 4:] if i >= 0 else msg)[:200]
 
 
 def _remember_limits(headers):
@@ -215,7 +222,7 @@ def call(system, user, schema=None, max_tokens=1024, provider=None, model=None,
             if r.retry_after and r.retry_after > config.MAX_RATE_LIMIT_WAIT:
                 # حد يومي أو انتظار طويل: ما نعلّق البرنامج، نسجل الفشل والموظف يعيد المحاولة بعدين
                 mins = max(1, round(r.retry_after / 60))
-                raise LLMError(f"خلص حد الاستخدام المجاني حالياً. أعد المحاولة بعد {mins} دقيقة تقريباً.",
+                raise LLMError(f"خلص حد الاستخدام المجاني حالياً. أعد المحاولة بعد {mins} دقيقة تقريباً. ({r})",
                                retryable=True)
             delay = r.retry_after or min(base_delay * 2**attempt + random.uniform(0, 1), max_delay)
             sleep(delay)

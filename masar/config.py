@@ -27,9 +27,10 @@ REASONING_EFFORT = os.getenv("MASAR_REASONING_EFFORT", "low")
 WORKERS = int(os.getenv("MASAR_WORKERS", "1"))
 # إذا المزوّد طلب انتظار أطول من هذا (ثواني)، نوقف ونسجل الفشل بدال ما نعلّق.
 MAX_RATE_LIMIT_WAIT = float(os.getenv("MASAR_MAX_RATE_LIMIT_WAIT", "90"))
-# حد التوكنات للجواب. gpt-oss يفكر قبل ما يجاوب، فنخلي مجال كافي.
-MAX_TOKENS_CLASSIFY = 2500
-MAX_TOKENS_DRAFT = 2000
+# حد التوكنات للجواب (يشمل تفكير gpt-oss). Groq يحجز هالحد من حدود الدقيقة واليوم،
+# فنخليه قريب من الحاجة الفعلية (الفهم ~450، المسودة ~300) مع هامش.
+MAX_TOKENS_CLASSIFY = 1000
+MAX_TOKENS_DRAFT = 800
 CONFIDENCE_THRESHOLD = float(os.getenv("MASAR_CONFIDENCE_THRESHOLD", "0.75"))
 PROMPT_VERSION = "v1"
 
