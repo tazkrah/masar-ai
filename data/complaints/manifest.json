@@ -57,15 +57,15 @@
         "W10"
       ],
       "by_category": {
-        "account_access": 30,
+        "other": 35,
         "card": 30,
         "agent_dispute": 25,
         "transfer_failed": 35,
-        "other": 30,
+        "account_access": 25,
         "wrong_recipient": 30
       },
       "sha256": "1f39f5607cbce41831f65ae769fe6ed7aeea07162d98e22965e97280470639ae",
-      "labels_sha256": "1e39983c2a6f0808f5b50f939733965dcc0260d4b1f4a5548eec3417f2e55093"
+      "labels_sha256": "ca2f6ce0f703c88724b4b5f35c33ca6bf9e13b04e60920953ee9a9f3f9f47b84"
     },
     "calib": {
       "rows": 60,
@@ -185,7 +185,85 @@
           "to": "السلام عليكم،"
         }
       ]
+    },
+    {
+      "data_version": 4,
+      "date": "2026-10-27T16:54:17",
+      "scenarios": [
+        "A10"
+      ],
+      "messages_changed": [],
+      "labels_changed": true,
+      "method": "manual review of message text",
+      "reason": "مراجعة يدوية لرسائل A10 الخمس حسب المكتوب بالرسالة فقط: ما بيها دليل على مشكلة دخول (الزبون يدخل لحسابه، أو المشكلة غير محددة). صارت «أخرى»، والقسم والأولوية حسب القواعد، والمراجعة مطلوبة لغموض الرسالة. القرار مستقل عن جواب الموديل.",
+      "label_changes": [
+        {
+          "id": "DEV-A10-4",
+          "from": {
+            "category": "account_access",
+            "priority": "medium",
+            "department": "أمن الحسابات"
+          },
+          "to": {
+            "category": "other",
+            "priority": "low",
+            "department": "خدمة الزبائن العامة"
+          }
+        },
+        {
+          "id": "DEV-A10-5",
+          "from": {
+            "category": "account_access",
+            "priority": "medium",
+            "department": "أمن الحسابات"
+          },
+          "to": {
+            "category": "other",
+            "priority": "low",
+            "department": "خدمة الزبائن العامة"
+          }
+        },
+        {
+          "id": "DEV-A10-3",
+          "from": {
+            "category": "account_access",
+            "priority": "medium",
+            "department": "أمن الحسابات"
+          },
+          "to": {
+            "category": "other",
+            "priority": "low",
+            "department": "خدمة الزبائن العامة"
+          }
+        },
+        {
+          "id": "DEV-A10-1",
+          "from": {
+            "category": "account_access",
+            "priority": "medium",
+            "department": "أمن الحسابات"
+          },
+          "to": {
+            "category": "other",
+            "priority": "low",
+            "department": "خدمة الزبائن العامة"
+          }
+        },
+        {
+          "id": "DEV-A10-2",
+          "from": {
+            "category": "account_access",
+            "priority": "medium",
+            "department": "أمن الحسابات"
+          },
+          "to": {
+            "category": "other",
+            "priority": "low",
+            "department": "خدمة الزبائن العامة"
+          }
+        }
+      ]
     }
   ],
-  "data_version": 3
+  "data_version": 4
 }

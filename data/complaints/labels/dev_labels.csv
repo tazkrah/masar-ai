@@ -1,5 +1,5 @@
 complaint_id,family_id,category,secondary_category,priority,department,transaction_id,amount,date,security_risk,expect_review,hard_type
-DEV-A10-4,A10,account_access,,medium,أمن الحسابات,,,,0,1,unclear_message
+DEV-A10-4,A10,other,,low,خدمة الزبائن العامة,,,,0,1,unclear_message
 DEV-K10-4,K10,card,,medium,البطاقات,,,,0,0,
 DEV-G07-5,G07,agent_dispute,,high,شبكة الوكلاء,,2500000,,0,0,
 DEV-G01-3,G01,agent_dispute,,medium,شبكة الوكلاء,,,,0,0,
@@ -29,7 +29,7 @@ DEV-K04-5,K04,card,,high,البطاقات,,,2026-10-04,1,0,
 DEV-K04-1,K04,card,,high,البطاقات,,,2026-09-24,1,0,
 DEV-G01-4,G01,agent_dispute,,medium,شبكة الوكلاء,,15000,2026-10-07,0,0,
 DEV-W01-2,W01,wrong_recipient,,high,النزاعات والاسترداد,,100000,2026-10-07,0,0,
-DEV-A10-5,A10,account_access,,medium,أمن الحسابات,,,,0,1,unclear_message
+DEV-A10-5,A10,other,,low,خدمة الزبائن العامة,,,,0,1,unclear_message
 DEV-W01-4,W01,wrong_recipient,,high,النزاعات والاسترداد,,200000,2026-09-26,0,0,
 DEV-K07-5,K07,card,,medium,البطاقات,,,,0,0,
 DEV-K07-4,K07,card,,medium,البطاقات,,,,0,0,
@@ -75,10 +75,10 @@ DEV-T04-2,T04,transfer_failed,,medium,العمليات والتحويلات,,250
 DEV-O03-4,O03,other,,low,خدمة الزبائن العامة,,,,0,0,
 DEV-A04-5,A04,account_access,,high,أمن الحسابات,,,2026-10-03,1,0,
 DEV-T06-3,T06,transfer_failed,,medium,العمليات والتحويلات,5739901981,25000,,0,0,
-DEV-A10-3,A10,account_access,,medium,أمن الحسابات,,,,0,1,unclear_message
+DEV-A10-3,A10,other,,low,خدمة الزبائن العامة,,,,0,1,unclear_message
 DEV-W08-5,W08,wrong_recipient,,high,النزاعات والاسترداد,71195829,2500000,2026-10-01,0,0,
 DEV-G07-1,G07,agent_dispute,,high,شبكة الوكلاء,,2500000,2026-10-10,0,0,
-DEV-A10-1,A10,account_access,,medium,أمن الحسابات,,,,0,1,unclear_message
+DEV-A10-1,A10,other,,low,خدمة الزبائن العامة,,,,0,1,unclear_message
 DEV-T02-1,T02,transfer_failed,,medium,العمليات والتحويلات,,35000,2026-10-12,0,0,
 DEV-A02-3,A02,account_access,,medium,أمن الحسابات,,,2026-09-22,0,0,
 DEV-O08-5,O08,other,,low,خدمة الزبائن العامة,,,,0,0,
@@ -131,7 +131,7 @@ DEV-A07-1,A07,account_access,,medium,أمن الحسابات,,,2026-10-06,0,0,
 DEV-K02-2,K02,card,,medium,البطاقات,,,2026-10-03,0,0,
 DEV-G07-3,G07,agent_dispute,,high,شبكة الوكلاء,,1000000,2026-09-27,0,0,
 DEV-G02-1,G02,agent_dispute,,medium,شبكة الوكلاء,,150000,2026-10-03,0,0,
-DEV-A10-2,A10,account_access,,medium,أمن الحسابات,,,,0,1,unclear_message
+DEV-A10-2,A10,other,,low,خدمة الزبائن العامة,,,,0,1,unclear_message
 DEV-O09-5,O09,other,,low,خدمة الزبائن العامة,,,,0,1,possible_injection
 DEV-W08-2,W08,wrong_recipient,,high,النزاعات والاسترداد,,1000000,,0,0,
 DEV-T04-4,T04,transfer_failed,,medium,العمليات والتحويلات,,75000,2026-10-08,0,0,

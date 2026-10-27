@@ -84,6 +84,18 @@ class GenerationTests(unittest.TestCase):
             if s["hard"] != "possible_injection":
                 self.assertEqual(a[s["id"]], b[s["id"]])
 
+    def test_label_overrides_applied_to_saved_labels(self):
+        import csv
+        from masar import config
+        root = Path(__file__).resolve().parent.parent / "data" / "complaints" / "labels"
+        for sp in ("dev", "calib", "test"):
+            for row in csv.DictReader((root / f"{sp}_labels.csv").open(encoding="utf-8")):
+                cat = g.LABEL_OVERRIDES.get(row["family_id"], {}).get("category")
+                if cat:
+                    self.assertEqual(row["category"], cat, row["complaint_id"])
+                    self.assertEqual(row["department"], config.ROUTING[cat])
+                    self.assertEqual(row["expect_review"], "1")
+
     def test_plan_truth_matches_given(self):
         rng = random.Random(3)
         for s in S:
