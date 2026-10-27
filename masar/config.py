@@ -18,8 +18,18 @@ LOCAL_DIR.mkdir(exist_ok=True)
 DB_PATH = Path(os.getenv("MASAR_DB", LOCAL_DIR / "masar.db"))
 GUIDE_PATH = ROOT / "data" / "support_guide.md"
 
-PROVIDER = os.getenv("MASAR_PROVIDER", "anthropic")
-MODEL = os.getenv("MASAR_MODEL", "claude-sonnet-4-6")
+# الافتراضي: Groq، الخطة المجانية. بدائل: anthropic أو gemini (MASAR_PROVIDER و MASAR_MODEL).
+PROVIDER = os.getenv("MASAR_PROVIDER", "groq")
+MODEL = os.getenv("MASAR_MODEL", "openai/gpt-oss-120b")
+# مستوى تفكير gpt-oss: low | medium | high. الأعلى يصرف توكنات أكثر من الحد اليومي المجاني.
+REASONING_EFFORT = os.getenv("MASAR_REASONING_EFFORT", "low")
+# الخطة المجانية حدها بالتوكنات بالدقيقة، فنعالج شكوى وحدة بكل مرة افتراضياً.
+WORKERS = int(os.getenv("MASAR_WORKERS", "1"))
+# إذا المزوّد طلب انتظار أطول من هذا (ثواني)، نوقف ونسجل الفشل بدال ما نعلّق.
+MAX_RATE_LIMIT_WAIT = float(os.getenv("MASAR_MAX_RATE_LIMIT_WAIT", "90"))
+# حد التوكنات للجواب. gpt-oss يفكر قبل ما يجاوب، فنخلي مجال كافي.
+MAX_TOKENS_CLASSIFY = 2500
+MAX_TOKENS_DRAFT = 2000
 CONFIDENCE_THRESHOLD = float(os.getenv("MASAR_CONFIDENCE_THRESHOLD", "0.75"))
 PROMPT_VERSION = "v1"
 

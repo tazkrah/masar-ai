@@ -17,5 +17,6 @@ case "$1" in
   test) exec "$VENV/bin/python" -m unittest discover tests ;;
   eval) shift; exec "$VENV/bin/python" scripts/evaluate.py "$@" ;;
   generate) shift; exec "$VENV/bin/python" scripts/generate_llm_dataset.py "$@" ;;
+  try) shift; exec "$VENV/bin/python" scripts/try_one.py "$@" ;;
   *)    exec "$VENV/bin/streamlit" run app.py --server.port "${PORT:-8501}" ;;
 esac

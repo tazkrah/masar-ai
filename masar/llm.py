@@ -1,7 +1,8 @@
 """استدعاء الموديل بدالة وحدة، حتى نگدر نبدّل المزوّد بدون ما نعيد بناء التطبيق.
 
-المزوّد الأساسي: Anthropic (Claude Sonnet 4.6) مع structured outputs.
-بدائل اختيارية للمقارنة: groq و gemini عبر واجهة OpenAI المتوافقة.
+المزوّد الافتراضي: Groq (الخطة المجانية) بموديل openai/gpt-oss-120b عبر واجهة OpenAI المتوافقة،
+مع JSON منظّم بمخطط صارم (json_schema, strict).
+بدائل: anthropic (Claude) و gemini، بتغيير MASAR_PROVIDER و MASAR_MODEL بملف .env.
 """
 import json
 import os
@@ -109,36 +110,74 @@ def _anthropic_call(system, user, schema, max_tokens, model, temperature=0):
     return text, resp.usage.input_tokens, resp.usage.output_tokens
 
 
+# آخر حدود استخدام رجعت من المزوّد (للعرض والتشخيص فقط)
+last_rate_limits = {}
+RATE_HEADERS = ("x-ratelimit-limit-requests", "x-ratelimit-remaining-requests", "x-ratelimit-reset-requests",
+                "x-ratelimit-limit-tokens", "x-ratelimit-remaining-tokens", "x-ratelimit-reset-tokens")
+
+
 def _openai_compat_call(provider, system, user, schema, max_tokens, model, temperature=0):
     import openai
 
     client = _client(provider)
     sys = system
     kwargs = {}
-    if schema:
+    if schema and provider == "groq":
+        # JSON منظّم بمخطط صارم: الموديل مقيّد يطلع جواب يطابق المخطط
+        kwargs["response_format"] = {"type": "json_schema",
+                                     "json_schema": {"name": "masar_output", "strict": True, "schema": schema}}
+    elif schema:
         sys += "\n\nرجّع JSON فقط يطابق هذا المخطط:\n" + json.dumps(schema, ensure_ascii=False)
         kwargs["response_format"] = {"type": "json_object"}
+    if provider == "groq" and "gpt-oss" in model:
+        kwargs["reasoning_effort"] = config.REASONING_EFFORT
+        kwargs["include_reasoning"] = False  # التفكير ما نحتاجه بالجواب
     try:
-        resp = client.chat.completions.create(
+        raw = client.chat.completions.with_raw_response.create(
             model=model,
-            max_tokens=max_tokens,
+            max_completion_tokens=max_tokens,
             temperature=temperature,
             messages=[{"role": "system", "content": sys}, {"role": "user", "content": user}],
             **kwargs,
         )
+        _remember_limits(raw.headers)
+        resp = raw.parse()
     except openai.RateLimitError as e:
+        _remember_limits(getattr(e.response, "headers", {}))
         raise _Retry("وصلنا حد الاستخدام (429).", _retry_after(e)) from e
     except openai.AuthenticationError as e:
-        raise LLMError(f"المفتاح مرفوض. تأكد من {KEY_ENV[provider]}.", retryable=False) from e
+        raise LLMError(f"المفتاح مرفوض (401). تأكد من {KEY_ENV[provider]} بملف .env.", retryable=False) from e
+    except openai.PermissionDeniedError as e:
+        raise LLMError("ما عندك صلاحية على هذا الموديل (403).", retryable=False) from e
+    except openai.NotFoundError as e:
+        raise LLMError(f"الموديل {model} مو موجود عند المزوّد (404).", retryable=False) from e
+    except openai.BadRequestError as e:
+        msg = str(getattr(e, "message", e))
+        if "json_validate_failed" in msg or "does not match the expected schema" in msg:
+            raise _Retry("الموديل طلّع JSON ما يطابق المخطط.", None) from e
+        raise LLMError(f"طلب مرفوض (400): {msg[:300]}", retryable=False) from e
     except openai.APIStatusError as e:
         if e.status_code >= 500:
             raise _Retry(f"خطأ من الخادم ({e.status_code}).", None) from e
         raise LLMError(f"خطأ ({e.status_code}).", retryable=False) from e
     except (openai.APIConnectionError, openai.APITimeoutError) as e:
         raise _Retry("مشكلة اتصال أو انتهى الوقت.", None) from e
-    text = resp.choices[0].message.content or ""
+    choice = resp.choices[0]
+    if choice.finish_reason == "length":
+        raise _Retry("الجواب انقطع قبل ما يكمل (حد التوكنات).", None)
+    text = choice.message.content or ""
     u = resp.usage
     return text, getattr(u, "prompt_tokens", None), getattr(u, "completion_tokens", None)
+
+
+def _remember_limits(headers):
+    try:
+        found = {h: headers.get(h) for h in RATE_HEADERS if headers.get(h) is not None}
+    except AttributeError:
+        return
+    if found:
+        last_rate_limits.clear()
+        last_rate_limits.update(found)
 
 
 class _Retry(Exception):
@@ -171,6 +210,11 @@ def call(system, user, schema=None, max_tokens=1024, provider=None, model=None,
             last = r
             if attempt == max_attempts - 1:
                 break
+            if r.retry_after and r.retry_after > config.MAX_RATE_LIMIT_WAIT:
+                # حد يومي أو انتظار طويل: ما نعلّق البرنامج، نسجل الفشل والموظف يعيد المحاولة بعدين
+                mins = max(1, round(r.retry_after / 60))
+                raise LLMError(f"خلص حد الاستخدام المجاني حالياً. أعد المحاولة بعد {mins} دقيقة تقريباً.",
+                               retryable=True)
             delay = r.retry_after or min(base_delay * 2**attempt + random.uniform(0, 1), max_delay)
             sleep(delay)
             continue

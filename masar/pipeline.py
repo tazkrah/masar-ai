@@ -62,7 +62,7 @@ def analyze(complaint: dict, with_draft=True, provider=None, model=None) -> dict
     received_at = complaint.get("received_at")
 
     system, user = prompts.classify_messages_with_examples(message, received_at)
-    res = llm.call(system, user, schema=prompts.CLASSIFY_SCHEMA, max_tokens=600, provider=provider, model=model)
+    res = llm.call(system, user, schema=prompts.CLASSIFY_SCHEMA, max_tokens=config.MAX_TOKENS_CLASSIFY, provider=provider, model=model)
     x = res.data
     if x.get("category") not in config.CATEGORIES:
         raise llm.LLMError(f"فئة غير معروفة من الموديل: {x.get('category')}", retryable=True)
@@ -110,7 +110,7 @@ def analyze(complaint: dict, with_draft=True, provider=None, model=None) -> dict
 
     if with_draft:
         dsys, duser = prompts.draft_prompts(message, category, fields, missing)
-        dres = llm.call(dsys, duser, max_tokens=500, provider=provider, model=model)
+        dres = llm.call(dsys, duser, max_tokens=config.MAX_TOKENS_DRAFT, provider=provider, model=model)
         draft = dres.text.strip()
         if check_draft(draft):
             reasons.append("draft_forbidden_phrase")
@@ -125,7 +125,7 @@ def analyze(complaint: dict, with_draft=True, provider=None, model=None) -> dict
     return out
 
 
-def process(complaint_ids, with_draft=True, workers=4, on_progress=None, db_path=None, provider=None, model=None):
+def process(complaint_ids, with_draft=True, workers=None, on_progress=None, db_path=None, provider=None, model=None):
     """يعالج قائمة شكاوى. الفاشلة تنحفظ بحالة failed مع السبب، بدون تكرار سجلها."""
     with db.connect(db_path) as conn:
         complaints = [db.get_complaint(conn, cid) for cid in complaint_ids]
@@ -133,7 +133,7 @@ def process(complaint_ids, with_draft=True, workers=4, on_progress=None, db_path
             db.bump_attempts(conn, c["id"])
 
     done = failed = 0
-    with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
+    with ThreadPoolExecutor(max_workers=max(1, workers or config.WORKERS)) as pool:
         futures = {pool.submit(analyze, c, with_draft, provider, model): c["id"] for c in complaints}
         for fut in as_completed(futures):
             cid = futures[fut]
@@ -165,5 +165,5 @@ def regenerate_draft(complaint_id, db_path=None):
     missing = [f for f in config.REQUIRED_FIELDS[category] if fields[f] is None]
     message, _ = clip(c["message"])
     dsys, duser = prompts.draft_prompts(message, category, fields, missing)
-    draft = llm.call(dsys, duser, max_tokens=500).text.strip()
+    draft = llm.call(dsys, duser, max_tokens=config.MAX_TOKENS_DRAFT).text.strip()
     return draft, check_draft(draft)

@@ -24,7 +24,10 @@ from masar import config, db, ingest, llm, pipeline  # noqa: E402
 DATASETS = {"llm": ROOT / "data" / "complaints", "template": ROOT / "data" / "template_complaints"}
 RUNS = ROOT / "runs"  # التقارير (تنرفع لـ GitHub)
 RUN_DBS = config.LOCAL_DIR / "runs"  # قواعد بيانات التشغيل (محلية فقط)
-PRICES = {"claude-sonnet-4-6": (3.0, 15.0)}  # دولار لكل مليون توكن (إدخال، إخراج)
+PRICES = {  # دولار لكل مليون توكن (إدخال، إخراج)
+    "claude-sonnet-4-6": (3.0, 15.0),
+    "openai/gpt-oss-120b": (0.0, 0.0),  # خطة Groq المجانية
+}
 
 
 def load(split, dataset):
@@ -142,7 +145,7 @@ def main():
     ap.add_argument("--dataset", choices=list(DATASETS), default="llm")
     ap.add_argument("--limit", type=int)
     ap.add_argument("--no-drafts", action="store_true")
-    ap.add_argument("--workers", type=int, default=4)
+    ap.add_argument("--workers", type=int, default=None, help="الافتراضي MASAR_WORKERS (1)")
     ap.add_argument("--sweep", action="store_true")
     ap.add_argument("--final", action="store_true", help="مطلوب لتشغيل مجموعة الاختبار النهائي")
     ap.add_argument("--retry-run", help="مسار قاعدة تشغيل سابق: نعيد الفاشلة بس")

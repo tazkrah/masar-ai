@@ -173,7 +173,7 @@ def generate_scenario(scen, variants, log, seen):
         if not pending:
             break
         batch = [variants[i] for i in pending]
-        res = llm.call(SYSTEM, user_prompt(scen, batch), schema=SCHEMA, max_tokens=3000,
+        res = llm.call(SYSTEM, user_prompt(scen, batch), schema=SCHEMA, max_tokens=6000,
                        provider=GEN_PROVIDER, model=GEN_MODEL, temperature=TEMPERATURE)
         usage["calls"] += 1
         usage["input"] += res.input_tokens or 0
