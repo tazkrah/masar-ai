@@ -48,7 +48,7 @@ def main():
             "الأولوية": config.PRIORITIES[r["priority"]],
             "القسم": r["department"],
             "رقم العملية": r["transaction_id"] or "فارغ",
-            "المبلغ": f"{r['amount']:,} د.ع" if r["amount"] else "فارغ",
+            "المبلغ": config.format_amount(r["amount"]) or "فارغ",
             "التاريخ": r["date"] or "فارغ",
             "الثقة": f"{r['confidence']:.2f}",
             "سبب التصنيف": r["reason"],

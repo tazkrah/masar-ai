@@ -143,6 +143,25 @@ class ProcessTests(unittest.TestCase):
         self.assertLess(sleeps[0], sleeps[1])
 
 
+class AmountFormatTests(unittest.TestCase):
+    def test_format(self):
+        self.assertEqual(config.format_amount(75000), "75,000 دينار عراقي")
+        self.assertIsNone(config.format_amount(None))
+
+    def test_draft_amount_variants_unified(self):
+        f = pipeline.format_amounts_in_draft
+        target = "75,000 دينار عراقي"
+        for raw in ("75000", "75,000 د.ع", "٧٥ الف دينار", "75 ألف", "75,000 دينار عراقي", "٧٥٬٠٠٠ دينار"):
+            out = f(f"المبلغ {raw} وصلنا.", 75000)
+            self.assertEqual(out, f"المبلغ {target} وصلنا.", raw)
+
+    def test_other_numbers_untouched(self):
+        out = pipeline.format_amounts_in_draft("رقم العملية 48213097 بمبلغ 75000.", 75000)
+        self.assertEqual(out, "رقم العملية 48213097 بمبلغ 75,000 دينار عراقي.")
+        self.assertEqual(pipeline.format_amounts_in_draft("رقم 48213097", None), "رقم 48213097")
+        self.assertEqual(pipeline.format_amounts_in_draft("حولت 75000، وراح", 75000), "حولت 75,000 دينار عراقي، وراح")
+
+
 class GuideTests(unittest.TestCase):
     def test_guide_sections_exist(self):
         from masar import prompts

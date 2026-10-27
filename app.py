@@ -303,7 +303,7 @@ with colA:
       <span class="k">الأولوية</span><span><span class="pill p-{r['priority']}">{PRI[r['priority']]}</span></span>
       <span class="k">القسم</span><span class="v">{esc(r['department'])}</span>
       <span class="k">رقم العملية</span>{v(r['transaction_id'])}
-      <span class="k">المبلغ</span>{v(fmt_amount(r['amount']))}
+      <span class="k">المبلغ</span>{v(config.format_amount(r['amount']))}
       <span class="k">التاريخ</span>{v(r['date'])}
       <span class="k">الثقة</span><span class="v">{r['confidence'] * 100:.0f}%</span>
     </div><div class="why"><b>سبب التصنيف:</b> {esc(r['reason'])}</div>""", unsafe_allow_html=True)

@@ -89,6 +89,11 @@ REVIEW_REASON_LABELS = {
 }
 
 
+def format_amount(amount: int | None) -> str | None:
+    """الشكل الموحد للمبلغ بالمسودات والعرض: 75,000 دينار عراقي."""
+    return f"{amount:,} دينار عراقي" if amount is not None else None
+
+
 def priority_for(category: str, amount: int | None, security_risk: bool) -> str:
     """قواعد الأولوية. نفس الدالة تستخدم لحساب الإجابة الصحيحة بالبيانات."""
     if security_risk:

@@ -51,6 +51,36 @@ def validate(extracted: dict, message: str, received_at: str | None):
     return fields, reasons
 
 
+_NUM = r"[0-9٠-٩]+(?:[,،٬][0-9٠-٩]{3})*"  # الفاصلة تنحسب بس إذا بعدها 3 أرقام
+_AMOUNT_RE = re.compile(
+    rf"(?<![0-9٠-٩])({_NUM})(\s*(?:ألف|الف|آلاف|الاف))?(\s*(?:دينار عراقي|دينار|د\.ع\.?|IQD))?"
+)
+
+
+def format_amounts_in_draft(draft: str, amount: int | None) -> str:
+    """أي كتابة لنفس المبلغ بالمسودة (75000، 75,000 د.ع، ٧٥ الف دينار) تصير بالشكل الموحد.
+
+    الأرقام الثانية (مثل رقم العملية) ما تتغير لأن قيمتها ما تساوي المبلغ.
+    """
+    if not draft or amount is None:
+        return draft
+    target = config.format_amount(amount)
+
+    def repl(m):
+        try:
+            value = int(re.sub(r"[,،٬]", "", m.group(1)).translate(ARABIC_DIGITS))
+        except ValueError:
+            return m.group(0)
+        if m.group(2):
+            value *= 1000
+        if value != amount:
+            return m.group(0)
+        trail = " " if m.group(0).endswith(" ") else ""
+        return target + trail
+
+    return _AMOUNT_RE.sub(repl, draft)
+
+
 def check_draft(draft: str):
     found = [p for p in prompts.forbidden_phrases() if p in draft]
     return found
@@ -111,7 +141,7 @@ def analyze(complaint: dict, with_draft=True, provider=None, model=None) -> dict
     if with_draft:
         dsys, duser = prompts.draft_prompts(message, category, fields, missing)
         dres = llm.call(dsys, duser, max_tokens=config.MAX_TOKENS_DRAFT, provider=provider, model=model)
-        draft = dres.text.strip()
+        draft = format_amounts_in_draft(dres.text.strip(), fields["amount"])
         if check_draft(draft):
             reasons.append("draft_forbidden_phrase")
         out["draft"] = draft
@@ -165,5 +195,5 @@ def regenerate_draft(complaint_id, db_path=None):
     missing = [f for f in config.REQUIRED_FIELDS[category] if fields[f] is None]
     message, _ = clip(c["message"])
     dsys, duser = prompts.draft_prompts(message, category, fields, missing)
-    draft = llm.call(dsys, duser, max_tokens=config.MAX_TOKENS_DRAFT).text.strip()
+    draft = format_amounts_in_draft(llm.call(dsys, duser, max_tokens=config.MAX_TOKENS_DRAFT).text.strip(), r["amount"])
     return draft, check_draft(draft)
