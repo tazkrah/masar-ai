@@ -64,7 +64,6 @@ p, li { margin-bottom: 0; }
 [class*="st-key-row-"] button:focus:not(:active) { border-color: var(--line); color: var(--ink); }
 [class*="st-key-row-"] button p { font-size: .87rem; line-height: 1.6; text-align: right; }
 [class*="st-key-row-"] button p strong { font-size: .78rem; }
-[class*="st-key-row-sel-"] button, [class*="st-key-row-sel-"] button:hover { background: var(--teal-soft); box-shadow: inset -3px 0 0 var(--teal); }
 .st-key-pager { padding-top: .35rem; }
 .st-key-pager button { min-height: 0; padding: .1rem .6rem; }
 .pager { text-align:center; font-size:.82rem; color: var(--muted); }
@@ -73,6 +72,7 @@ p, li { margin-bottom: 0; }
 .st-key-detail { border: 1px solid var(--line); border-radius: var(--r); gap: 0; }
 .st-key-dhead { padding: .7rem 1.1rem .6rem; border-bottom: 1px solid var(--line); }
 [class*="st-key-dbody-"] { padding: .2rem 1.1rem .8rem; }
+.st-key-dempty { padding: 1rem 1.1rem; min-height: 12rem; }
 .st-key-dfoot { padding: .6rem 1.1rem; border-top: 1px solid var(--line); background: #fff; border-radius: 0 0 var(--r) var(--r); }
 .d-head { display:flex; align-items:baseline; gap:.7rem; flex-wrap:wrap; }
 .d-id { font-size: 1.15rem; font-weight: 800; color: var(--ink); }
@@ -89,13 +89,7 @@ p, li { margin-bottom: 0; }
 .sec { font-size: .78rem; color: var(--muted); font-weight: 700; margin: .9rem 0 .35rem; }
 .msg { background: var(--soft); border-right: 3px solid var(--teal); padding: .6rem .9rem; border-radius: var(--r);
        font-size: 1rem; line-height: 1.8; color: var(--ink); white-space: pre-wrap; }
-.facts { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: .5rem 1rem; font-size: .9rem; }
-.facts .k { color: var(--muted); font-size: .76rem; display:block; }
-.facts .v { color: var(--ink); font-weight: 700; }
-.facts .none { color: var(--muted); font-weight: 400; }
-.facts .high { color: var(--red); }
 .why { color: var(--muted); font-size: .85rem; margin-top: .5rem; line-height: 1.65; }
-.unsaved { color: var(--amber); font-size: .8rem; margin-top: .25rem; }
 .foot-msg { font-size: .85rem; color: var(--muted); line-height: 1.5; }
 .foot-msg.ok { color: var(--teal); font-weight: 700; }
 .foot-msg.err { color: var(--red); font-weight: 700; }
@@ -104,6 +98,26 @@ p, li { margin-bottom: 0; }
 [data-testid="stExpander"] summary p { font-size: .84rem; color: var(--muted); }
 [data-testid="stExpander"] summary svg, [data-testid="stExpander"] summary [data-testid="stIconMaterial"] { transform: scaleX(-1); }
 textarea { line-height: 1.75 !important; }
+/* Streamlit يحط text-align:left على حاويات النص (stMarkdownContainer)، و dir=rtl وحده ما يغيّرها */
+.stApp [data-testid="stMarkdownContainer"], [data-baseweb="popover"] [data-testid="stMarkdownContainer"],
+[data-testid="stDialog"] [data-testid="stMarkdownContainer"] { text-align: right; }
+/* صفوف القائمة: بدون فراغ flex بين الصفوف، والمحتوى يبدأ من اليمين بعرض الصف كله */
+.st-key-list { gap: 0; }
+[class*="st-key-row-"] button > div, [class*="st-key-row-"] button > div > span,
+[class*="st-key-row-"] button [data-testid="stMarkdownContainer"] { width: 100%; justify-content: flex-start; }
+/* نوع المشكلة يتغيّر من مكانه */
+[class*="st-key-w_cat_"] [data-testid="stWidgetLabel"] p { font-size: .76rem; color: var(--muted); font-weight: 400; }
+[class*="st-key-w_cat_"] [data-testid="stWidgetLabel"] { min-height: 0; margin-bottom: .1rem; }
+[class*="st-key-w_cat_"] [role="group"] { min-height: 2.1rem; }
+[class*="st-key-w_cat_"] input { font-weight: 700; font-size: .9rem; }
+.fact .k { color: var(--muted); font-size: .76rem; display:block; margin-bottom: .1rem; }
+.fact .v { color: var(--ink); font-weight: 700; font-size: .9rem; }
+.fact .none { color: var(--muted); font-size: .9rem; }
+.fact .high { color: var(--red); }
+.tag-unsaved { color: var(--amber); font-size: .76rem; }
+.foot-msg.warn { color: var(--amber); font-weight: 700; }
+[class*="st-key-addnote_"] button { min-height: 0; padding: .1rem .5rem; color: var(--teal); font-weight: 700; }
+[class*="st-key-w_note_"] input { font-size: .88rem; }
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -401,8 +415,11 @@ if ss["q"]:
     q = ss["q"]
     items = [r for r in items if q in r["message"] or q in (r["transaction_id"] or "") or q in (r["source_id"] or "")]
 items.sort(key=sort_key)
-if ss["sel"] not in by_id:
-    ss["sel"] = items[0]["complaint_id"] if items else rows[0]["complaint_id"]
+# الشكوى المفتوحة لازم تكون من نتائج الفلتر والبحث. إذا خرجت منها (مثلاً بعد الاعتماد) نفتح أول نتيجة،
+# وإذا ماكو نتائج تبقى التفاصيل فارغة.
+visible = [x["complaint_id"] for x in items]
+if ss["sel"] not in visible:
+    ss["sel"] = visible[0] if visible else None
 
 list_col, detail_col = st.columns([1, 1.9], gap="medium")
 
@@ -418,6 +435,9 @@ with list_col:
     page = min(ss["page"], pages - 1)
     if pages > 1:  # أزرار الصفحات تحت القائمة، فالقائمة تقصر بقدرها حتى ما تطلع برا الشاشة
         st.markdown("<style>:root { --list-h: calc(100vh - 242px); }</style>", unsafe_allow_html=True)
+    if ss["sel"]:
+        st.markdown(f"<style>.st-key-row-{ss['sel']} button, .st-key-row-{ss['sel']} button:hover "
+                    "{ background: var(--teal-soft); box-shadow: inset -3px 0 0 var(--teal); }</style>", unsafe_allow_html=True)
     with st.container(key="list"):
         if not items:
             st.markdown('<div class="empty">ما اكو شكاوى تطابق البحث أو الفلتر.</div>', unsafe_allow_html=True)
@@ -434,7 +454,7 @@ with list_col:
             preview = r["message"].replace("\n", " ")
             preview = preview[:72] + ("…" if len(preview) > 72 else "")
             st.button(f"{line1}  \n:gray[{md_esc(label_id(r))}] · {md_esc(preview)}",
-                      key=f"row-{'sel-' if cid == ss['sel'] else ''}{cid}", on_click=select, args=(cid,), width="stretch")
+                      key=f"row-{cid}", on_click=select, args=(cid,), width="stretch")
     if pages > 1:
         with st.container(key="pager"):
             p1, p2, p3 = st.columns([1, 1.6, 1], vertical_alignment="center")
@@ -448,16 +468,34 @@ with list_col:
 
 
 # ================================================================== التفاصيل
-r = by_id[ss["sel"]]
-cid, s = r["complaint_id"], r["state"]
+ss.setdefault("note_open", set())
+if ss["sel"]:
+    r = by_id[ss["sel"]]
+    cid, s = r["complaint_id"], r["state"]
+
+
+def open_note(cid):
+    ss["note_open"].add(cid)
 
 
 def header():
     meta = [x for x in (r["channel"], fmt_time(r["received_at"]), f"السطر {r['row_number']} بالملف") if x]
     when = f' <small>· {esc(fmt_time(r["reviewed_at"]))}</small>' if s in ("approved", "followup") else ""
-    st.markdown(f'<div class="d-head"><span class="d-id"><bdi>{esc(label_id(r))}</bdi></span>'
-                f'<span class="st {s}">{STATES[s]}{when}</span><span class="d-meta">{esc(" · ".join(meta))}</span></div>',
-                unsafe_allow_html=True)
+    a, b = st.columns([6, 1], vertical_alignment="center")
+    a.markdown(f'<div class="d-head"><span class="d-id"><bdi>{esc(label_id(r))}</bdi></span>'
+               f'<span class="st {s}">{STATES[s]}{when}</span><span class="d-meta">{esc(" · ".join(meta))}</span></div>',
+               unsafe_allow_html=True)
+    if r["status"] != "done":
+        return
+    note = current(r)["note"]
+    if not (note or cid in ss["note_open"]):
+        b.button("+ ملاحظة", type="tertiary", key=f"addnote_{cid}", on_click=open_note, args=(cid,), width="stretch")
+        return
+    # الملاحظة الموجودة تبقى ظاهرة وقابلة للتعديل؛ تنحفظ ويا القرار مثل المسودة
+    ss[f"w_note_{cid}"] = note
+    st.text_input("ملاحظة داخلية", key=f"w_note_{cid}", on_change=keep_edit, args=(cid, "note"),
+                  placeholder="ملاحظة داخلية للفريق، ما تنرسل للزبون", label_visibility="collapsed")
+    st.markdown("<style>:root { --body-h: calc(100vh - 258px); }</style>", unsafe_allow_html=True)
 
 
 def body():
@@ -477,39 +515,38 @@ def body():
         cur = current(r)
         missing = set(r["missing_fields"])
 
-        def fact(k, v, field=None, cls="", ltr=False):
+        def fact(col, k, v, field=None, cls="", ltr=False):
             if v in (None, ""):
                 v = '<span class="none">' + ("ما مذكور، المسودة تطلبه" if field in missing else "ما مذكور") + '</span>'
             else:
                 v = f'<span class="v {cls}">' + (f"<bdi>{esc(v)}</bdi>" if ltr else esc(v)) + '</span>'
-            return f'<div><span class="k">{k}</span>{v}</div>'
+            col.markdown(f'<div class="fact"><span class="k">{k}</span>{v}</div>', unsafe_allow_html=True)
 
         st.markdown('<div class="sec">معلومات المعالجة</div>', unsafe_allow_html=True)
-        st.markdown('<div class="facts">'
-                    + fact("نوع المشكلة", CAT[cur["cat"]] + (" (صحّحته)" if cur["cat"] != r["category"] else ""))
-                    + fact("الأولوية", PRI[r["priority"]], cls="high" if r["priority"] == "high" else "")
-                    + fact("القسم", config.ROUTING[cur["cat"]])
-                    + fact("الثقة", f"{r['confidence'] * 100:.0f}%", ltr=True)
-                    + fact("رقم العملية", r["transaction_id"], "transaction_id", ltr=True)
-                    + fact("المبلغ", config.format_amount(r["amount"]), "amount")
-                    + fact("تاريخ المشكلة", r["date"], "date", ltr=True)
-                    + '</div>'
-                    + (f'<div class="why"><b>سبب التصنيف:</b> {esc(r["reason"])}</div>' if r["reason"] else ''),
-                    unsafe_allow_html=True)
+        c1 = st.columns(4, gap="medium")
+        with c1[0]:
+            cat_keys = list(CAT)
+            ss[f"w_cat_{cid}"] = cur["cat"]
+            st.selectbox("نوع المشكلة", cat_keys, format_func=CAT.get, key=f"w_cat_{cid}", on_change=keep_edit, args=(cid, "cat"))
+            if cur["cat"] != saved_values(r)["cat"]:
+                st.markdown('<span class="tag-unsaved">تغيّر النوع، ما انحفظ بعد</span>', unsafe_allow_html=True)
+            elif r["corrected_category"]:
+                st.markdown(f'<span class="tag-unsaved" style="color:var(--muted)">صحّحته؛ الموديل قال «{esc(CAT[r["category"]])}»</span>',
+                            unsafe_allow_html=True)
+        fact(c1[1], "الأولوية", PRI[r["priority"]], cls="high" if r["priority"] == "high" else "")
+        fact(c1[2], "القسم", config.ROUTING[cur["cat"]])
+        fact(c1[3], "الثقة", f"{r['confidence'] * 100:.0f}%", ltr=True)
+        c2 = st.columns(4, gap="medium")
+        fact(c2[0], "رقم العملية", r["transaction_id"], "transaction_id", ltr=True)
+        fact(c2[1], "المبلغ", config.format_amount(r["amount"]), "amount")
+        fact(c2[2], "تاريخ المشكلة", r["date"], "date", ltr=True)
+        if r["reason"]:
+            st.markdown(f'<div class="why"><b>سبب التصنيف:</b> {esc(r["reason"])}</div>', unsafe_allow_html=True)
 
         st.markdown('<div class="sec">مسودة الرد</div>', unsafe_allow_html=True)
         ss[f"w_draft_{cid}"] = cur["draft"]
         st.text_area("مسودة الرد", key=f"w_draft_{cid}", height=140, label_visibility="collapsed",
                      on_change=keep_edit, args=(cid, "draft"))
-        if cur != saved_values(r):
-            st.markdown('<div class="unsaved">فيها تعديلات ما انحفظت بعد. تبقى لو فتحت شكوى ثانية ورجعت.</div>',
-                        unsafe_allow_html=True)
-        cat_keys = list(CAT)
-        with st.expander("تصحيح النوع أو إضافة ملاحظة", expanded=bool(r["corrected_category"] or r["note"])):
-            ss[f"w_cat_{cid}"] = cur["cat"]
-            st.selectbox("نوع المشكلة", cat_keys, format_func=CAT.get, key=f"w_cat_{cid}", on_change=keep_edit, args=(cid, "cat"))
-            ss[f"w_note_{cid}"] = cur["note"]
-            st.text_input("ملاحظة داخلية", key=f"w_note_{cid}", on_change=keep_edit, args=(cid, "note"))
 
     with st.expander("تفاصيل تقنية"):
         tech = [f"المعرّف الداخلي: {cid}", f"المحاولات: {r['attempts']}", f"آخر تحديث: {fmt_time(r['updated_at'])}"]
@@ -532,10 +569,9 @@ def footer():
     if r["status"] == "done":
         b1, b2, b3, m = st.columns([1.15, 1, 1, 2.6], vertical_alignment="center")
         approve = b1.button("اعتماد الرد" if s != "approved" else "حفظ التعديل", type="primary", width="stretch",
-                            key=f"ok_{cid}", help="يحفظ الرد جاهز للإرسال اليدوي. مسار ما يرسل أي شي للزبون.")
+                            key=f"ok_{cid}")
         follow = b2.button("للمتابعة", width="stretch", key=f"fu_{cid}", disabled=s == "followup" and not is_dirty(r))
-        rewrite = b3.button("إعادة كتابة", width="stretch", disabled=not connected, key=f"re_{cid}",
-                            help="يكتب مسودة جديدة حسب النوع المختار")
+        rewrite = b3.button("إعادة كتابة", width="stretch", disabled=not connected, key=f"re_{cid}")
     elif s == "failed":
         b1, m = st.columns([1.6, 3.15], vertical_alignment="center")
         msg = msg or ("تعيد معالجة هذي الشكوى بس. الباقي يبقى مثل ما هو.", "muted")
@@ -544,6 +580,8 @@ def footer():
     else:
         m = st.container()
         msg = msg or ("القرار يصير متاح بعد ما تنعالج الشكوى.", "muted")
+    if msg is None and is_dirty(r):
+        msg = ("فيها تعديلات ما انحفظت بعد. تبقى لو فتحت شكوى ثانية.", "warn")
     if msg is None:
         msg = ("الاعتماد ما يرسل شي للزبون؛ الإرسال يدوي من نظام الدعم.", "muted")
     m.markdown(f'<div class="foot-msg {msg[1]}">{msg[0]}</div>', unsafe_allow_html=True)
@@ -553,9 +591,7 @@ def footer():
         with db.connect() as conn:
             db.save_review(conn, cid, decision, v["draft"], v["cat"] if v["cat"] != r["category"] else None, v["note"] or None)
         ss["edits"].pop(cid, None)
-        ids_ = [x["complaint_id"] for x in to_review]
-        after = ids_[ids_.index(cid) + 1:] + ids_[:ids_.index(cid)] if cid in ids_ else ids_
-        ss["sel"] = after[0] if after else cid
+        ss["note_open"].discard(cid)
 
     if approve:
         text = current(r)["draft"]
@@ -589,9 +625,16 @@ def footer():
 
 
 with detail_col, st.container(key="detail"):
-    with st.container(key="dhead"):
-        header()
-    with st.container(key=f"dbody-{cid}"):  # مفتاح لكل شكوى: كل شكوى تنفتح من أعلاها
-        body()
-    with st.container(key="dfoot"):
-        footer()
+    if not ss["sel"]:
+        with st.container(key="dempty"):
+            if done_msg := ss.pop("note_once", None):
+                st.markdown(f'<div class="foot-msg {done_msg[1]}">{done_msg[0]}</div>', unsafe_allow_html=True)
+            st.markdown('<div class="empty">ما اكو شكوى تطابق الفلتر أو البحث. اختر فلتر ثاني من القائمة.</div>',
+                        unsafe_allow_html=True)
+    else:
+        with st.container(key="dhead"):
+            header()
+        with st.container(key=f"dbody-{cid}"):  # مفتاح لكل شكوى: كل شكوى تنفتح من أعلاها
+            body()
+        with st.container(key="dfoot"):
+            footer()
