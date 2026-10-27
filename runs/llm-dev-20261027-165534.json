@@ -1,0 +1,85 @@
+{
+  "n": 10,
+  "processed": 0,
+  "failed": 10,
+  "failures": [
+    {
+      "id": "DEV-A10-4",
+      "error": "خلص حد الاستخدام المجاني حالياً. أعد المحاولة بعد 5 دقيقة تقريباً. (وصلنا حد الاستخدام (429): tokens per day (TPD): Limit 200000, Used 198585, Requested 2117. Please try again in 5m3.264s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'token)"
+    },
+    {
+      "id": "DEV-K10-4",
+      "error": "خلص حد الاستخدام المجاني حالياً. أعد المحاولة بعد 5 دقيقة تقريباً. (وصلنا حد الاستخدام (429): tokens per day (TPD): Limit 200000, Used 198585, Requested 2098. Please try again in 4m55.056s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'toke)"
+    },
+    {
+      "id": "DEV-G07-5",
+      "error": "خلص حد الاستخدام المجاني حالياً. أعد المحاولة بعد 5 دقيقة تقريباً. (وصلنا حد الاستخدام (429): tokens per day (TPD): Limit 200000, Used 198585, Requested 2125. Please try again in 5m6.72s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens)"
+    },
+    {
+      "id": "DEV-G01-3",
+      "error": "خلص حد الاستخدام المجاني حالياً. أعد المحاولة بعد 5 دقيقة تقريباً. (وصلنا حد الاستخدام (429): tokens per day (TPD): Limit 200000, Used 198584, Requested 2117. Please try again in 5m2.832s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'token)"
+    },
+    {
+      "id": "DEV-T08-2",
+      "error": "خلص حد الاستخدام المجاني حالياً. أعد المحاولة بعد 5 دقيقة تقريباً. (وصلنا حد الاستخدام (429): tokens per day (TPD): Limit 200000, Used 198584, Requested 2090. Please try again in 4m51.168s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'toke)"
+    },
+    {
+      "id": "DEV-K04-3",
+      "error": "خلص حد الاستخدام المجاني حالياً. أعد المحاولة بعد 5 دقيقة تقريباً. (وصلنا حد الاستخدام (429): tokens per day (TPD): Limit 200000, Used 198584, Requested 2105. Please try again in 4m57.648s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'toke)"
+    },
+    {
+      "id": "DEV-O03-2",
+      "error": "خلص حد الاستخدام المجاني حالياً. أعد المحاولة بعد 5 دقيقة تقريباً. (وصلنا حد الاستخدام (429): tokens per day (TPD): Limit 200000, Used 198584, Requested 2111. Please try again in 5m0.24s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens)"
+    },
+    {
+      "id": "DEV-T11-1",
+      "error": "خلص حد الاستخدام المجاني حالياً. أعد المحاولة بعد 5 دقيقة تقريباً. (وصلنا حد الاستخدام (429): tokens per day (TPD): Limit 200000, Used 198583, Requested 2121. Please try again in 5m4.128s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'token)"
+    },
+    {
+      "id": "DEV-O02-5",
+      "error": "خلص حد الاستخدام المجاني حالياً. أعد المحاولة بعد 5 دقيقة تقريباً. (وصلنا حد الاستخدام (429): tokens per day (TPD): Limit 200000, Used 198583, Requested 2147. Please try again in 5m15.36s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'token)"
+    },
+    {
+      "id": "DEV-K07-3",
+      "error": "خلص حد الاستخدام المجاني حالياً. أعد المحاولة بعد 5 دقيقة تقريباً. (وصلنا حد الاستخدام (429): tokens per day (TPD): Limit 200000, Used 198582, Requested 2145. Please try again in 5m14.064s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'toke)"
+    }
+  ],
+  "category_accuracy": null,
+  "category_macro_f1": 0.0,
+  "per_class_f1": {
+    "transfer_failed": 0.0,
+    "wrong_recipient": 0.0,
+    "account_access": 0.0,
+    "agent_dispute": 0.0,
+    "card": 0.0,
+    "other": 0.0
+  },
+  "category_accuracy_lenient_multi": null,
+  "field_exact": {},
+  "field_exact_all3": null,
+  "priority_accuracy": null,
+  "department_accuracy_all": null,
+  "auto_routed_share": null,
+  "auto_routed_department_accuracy": null,
+  "review_rate": null,
+  "hard_cases_sent_to_review": "0/0",
+  "review_reasons": {},
+  "confusion": {},
+  "threshold": 0.75,
+  "avg_latency_ms": null,
+  "tokens": {
+    "input": 0,
+    "output": 0
+  },
+  "est_cost_usd": null,
+  "errors": [],
+  "split": "dev",
+  "dataset": "llm",
+  "provider": "groq",
+  "model": "openai/gpt-oss-120b",
+  "prompt_version": "v2",
+  "drafts": true,
+  "wall_seconds": 1.6,
+  "db": "local.nosync/runs/llm-dev-20261027-165534.db",
+  "forbidden_in_drafts": 0
+}
