@@ -32,7 +32,7 @@ MAX_RATE_LIMIT_WAIT = float(os.getenv("MASAR_MAX_RATE_LIMIT_WAIT", "90"))
 MAX_TOKENS_CLASSIFY = 1000
 MAX_TOKENS_DRAFT = 800
 CONFIDENCE_THRESHOLD = float(os.getenv("MASAR_CONFIDENCE_THRESHOLD", "0.75"))
-PROMPT_VERSION = "v1"
+PROMPT_VERSION = "v2"  # v2: الأسئلة حسب موضوعها، وتاريخ الاستلام مو تاريخ المشكلة
 
 MAX_MESSAGE_CHARS = 2000
 
@@ -85,6 +85,8 @@ REVIEW_REASON_LABELS = {
     "invalid_transaction_id": "رقم العملية المستخرج مو موجود بنص الرسالة",
     "invalid_amount": "المبلغ المستخرج شكله غلط",
     "invalid_date": "التاريخ المستخرج شكله غلط",
+    "unsupported_date": "الموديل طلّع تاريخ والرسالة ما بيها أي تاريخ أو وقت (انشال التاريخ)",
+    "draft_unsupported_date": "المسودة بيها تاريخ مو مذكور بالرسالة",
     "draft_forbidden_phrase": "المسودة بيها وعد أو عبارة ممنوعة",
     "message_too_long": "الرسالة طويلة وانقطعت",
 }

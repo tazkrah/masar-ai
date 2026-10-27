@@ -16,6 +16,22 @@ def _digits_only(s):
     return re.sub(r"\D", "", (s or "").translate(ARABIC_DIGITS))
 
 
+# أي إشارة لوقت أو تاريخ بنص الرسالة. إذا ماكو ولا وحدة، التاريخ المستخرج مو مسنود.
+_TIME_WORDS = ["اليوم", "البارحة", "البارح", "امبارح", "مبارح", "امس", "أمس", "الصبح", "الصباح", "العصر", "الظهر",
+               "المسا", "المساء", "الليل", "الليلة", "البارحة بالليل", "هسه", "هسة", "الحين", "قبل يوم", "قبل يومين",
+               "قبل ثلاث", "قبل كم يوم", "قبل اسبوع", "قبل أسبوع", "الأسبوع", "الاسبوع", "الشهر", "بتاريخ", "تاريخ",
+               "كانون", "شباط", "آذار", "اذار", "نيسان", "أيار", "ايار", "حزيران", "تموز", "آب", "أيلول", "ايلول",
+               "تشرين", "الجمعة", "السبت", "الأحد", "الاحد", "الاثنين", "الثلاثاء", "الأربعاء", "الاربعاء",
+               "الخميس", "today", "yesterday"]
+_TIME_RE = re.compile(r"(?<!\w)(?:[وبفل]|بال|وال)?(?:" + "|".join(map(re.escape, _TIME_WORDS)) + r")(?!\w)", re.I)
+_DATE_RE = re.compile(r"\d{4}-\d{1,2}-\d{1,2}|\d{1,2}\s*[/\-]\s*\d{1,2}|يوم\s*\d{1,2}")
+
+
+def has_time_reference(message: str) -> bool:
+    msg = message.translate(ARABIC_DIGITS)
+    return bool(_TIME_RE.search(msg) or _DATE_RE.search(msg))
+
+
 def validate(extracted: dict, message: str, received_at: str | None):
     """فحص شكل الجواب. يرجع (حقول نظيفة، أسباب مراجعة). القيمة اللي شكلها غلط تنمسح وتنعلّم."""
     reasons = []
@@ -45,10 +61,24 @@ def validate(extracted: dict, message: str, received_at: str | None):
             upper = date.fromisoformat(received_at[:10]) if received_at else None
             if parsed.year < 2020 or (upper and parsed > upper):
                 raise ValueError
-            fields["date"] = parsed.isoformat()
+            if has_time_reference(message):
+                fields["date"] = parsed.isoformat()
+            else:
+                # غالباً الموديل حط تاريخ الاستلام. ما نخليه يوصل للمسودة.
+                reasons.append("unsupported_date")
         except (ValueError, TypeError):
             reasons.append("invalid_date")
     return fields, reasons
+
+
+_DRAFT_DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+def draft_unsupported_dates(draft: str, message: str, date_field: str | None):
+    """تواريخ بصيغة YYYY-MM-DD بالمسودة مو موجودة بالحقول المسنودة ولا بنص الرسالة."""
+    msg = message.translate(ARABIC_DIGITS)
+    return [d for d in _DRAFT_DATE_RE.findall((draft or "").translate(ARABIC_DIGITS))
+            if d != date_field and d not in msg]
 
 
 _NUM = r"[0-9٠-٩]+(?:[,،٬][0-9٠-٩]{3})*"  # الفاصلة تنحسب بس إذا بعدها 3 أرقام
@@ -144,6 +174,8 @@ def analyze(complaint: dict, with_draft=True, provider=None, model=None) -> dict
         draft = format_amounts_in_draft(dres.text.strip(), fields["amount"])
         if check_draft(draft):
             reasons.append("draft_forbidden_phrase")
+        if draft_unsupported_dates(draft, message, fields["date"]):
+            reasons.append("draft_unsupported_date")
         out["draft"] = draft
         out["latency_ms"] += dres.latency_ms
         if dres.input_tokens is not None and out["input_tokens"] is not None:

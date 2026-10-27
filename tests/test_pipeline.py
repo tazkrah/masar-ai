@@ -47,7 +47,7 @@ class IngestTests(unittest.TestCase):
 
 class ValidateTests(unittest.TestCase):
     def test_arabic_digits_txid_ok(self):
-        f, r = pipeline.validate(BASE, "رقم العملية ١٢٣٤٥", "2026-10-05")
+        f, r = pipeline.validate(BASE, "حولت البارحة، رقم العملية ١٢٣٤٥", "2026-10-05")
         self.assertEqual(f["transaction_id"], "12345")
         self.assertEqual(r, [])
 
@@ -141,6 +141,53 @@ class ProcessTests(unittest.TestCase):
         self.assertEqual(res.data, {"a": 1})
         self.assertEqual(len(sleeps), 2)
         self.assertLess(sleeps[0], sleeps[1])
+
+
+G07_5 = "هلا، أودعت 2,500,000 دينار عند وكيل وما نزل بالحساب. الوكيل ما يرد عليّ والموضوع قلقني، رجاءً حلّوه بسرعة."
+
+
+class DateGroundingTests(unittest.TestCase):
+    def test_time_reference_detection(self):
+        self.assertFalse(pipeline.has_time_reference(G07_5))
+        for m in ("حولت البارحة وما وصل", "صار هالشي قبل يومين", "بتاريخ ٢/١٠ انخصم", "يوم 8 الشهر حولت",
+                  "التحويل بتاريخ 2026-10-11", "امس سحبت من الصراف", "الصبح انرفضت البطاقة"):
+            self.assertTrue(pipeline.has_time_reference(m), m)
+        self.assertFalse(pipeline.has_time_reference("رقم العملية 48213097 بمبلغ 75 الف"))
+        self.assertFalse(pipeline.has_time_reference("شنو حدود السحب اليومية؟"))  # اليومية مو اليوم
+
+    def test_g07_5_received_date_is_not_transaction_date(self):
+        """حالة DEV-G07-5: الموديل حط تاريخ الاستلام والرسالة ما بيها أي تاريخ."""
+        ans = {**BASE, "category": "agent_dispute", "transaction_id": None, "amount_iqd": 2500000,
+               "date": "2026-10-03"}
+        f, r = pipeline.validate(ans, G07_5, "2026-10-03 09:10")
+        self.assertIsNone(f["date"])
+        self.assertIn("unsupported_date", r)
+        self.assertEqual(f["amount"], 2500000)
+
+        prompts_seen = []
+
+        def fake(system, user, schema=None, **kw):
+            prompts_seen.append(user)
+            if schema:
+                return llm.LLMResult(dict(ans), "", 1, 1, 1)
+            return llm.LLMResult(None, "وصلتنا شكواك بخصوص إيداع 2,500,000 دينار عراقي بتاريخ 2026-10-03.", 1, 1, 1)
+
+        with mock.patch.object(llm, "call", fake):
+            out = pipeline.analyze({"message": G07_5, "received_at": "2026-10-03 09:10"})
+        self.assertIsNone(out["date"])
+        self.assertNotIn("2026-10-03", prompts_seen[1])  # التاريخ ما وصل لتعليمات المسودة
+        self.assertIn("unsupported_date", out["review_reasons"])
+        self.assertIn("draft_unsupported_date", out["review_reasons"])  # وإذا الموديل كتبه بالمسودة، ينمسك
+        self.assertEqual(out["needs_review"], 1)
+
+    def test_supported_relative_date_kept(self):
+        f, r = pipeline.validate({**BASE, "date": "2026-10-04"}, "حولت البارحة رقم العملية 12345", "2026-10-05 10:00")
+        self.assertEqual(f["date"], "2026-10-04")
+        self.assertEqual(r, [])
+
+    def test_draft_date_from_message_is_ok(self):
+        self.assertEqual(pipeline.draft_unsupported_dates("التحويل بتاريخ 2026-10-11", "بتاريخ 2026-10-11 حولت", None), [])
+        self.assertEqual(pipeline.draft_unsupported_dates("بتاريخ 2026-10-04", "حولت البارحة", "2026-10-04"), [])
 
 
 class AmountFormatTests(unittest.TestCase):
