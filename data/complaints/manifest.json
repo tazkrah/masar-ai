@@ -64,7 +64,7 @@
         "other": 30,
         "wrong_recipient": 30
       },
-      "sha256": "1b8dcc62e9654306164b60c6f399b2cfb34866388c5348b4422dd0eb191ee595",
+      "sha256": "e16bfa6dad181c01736e75acd04c0f95f2dc7a13f8297fac931555c9d0bb1dc0",
       "labels_sha256": "1e39983c2a6f0808f5b50f939733965dcc0260d4b1f4a5548eec3417f2e55093"
     },
     "calib": {
@@ -118,8 +118,42 @@
         "card": 10,
         "agent_dispute": 10
       },
-      "sha256": "5639acd6a510223d9edc46df6867f2d4b2c957132684249918d195ac6ad0c773",
+      "sha256": "a079d7b7cbe1aabd8e6280328cb06975be2872124d9a009e4e8fc050cf2dabf9",
       "labels_sha256": "4675fe0fbffba9c246d75e600d8bb2e73a2dcf1f805a1d82ae50ef9a06c29bc8"
     }
-  }
+  },
+  "revisions": [
+    {
+      "data_version": 2,
+      "date": "2026-10-27T16:31:22",
+      "scenarios": [
+        "O09",
+        "T12"
+      ],
+      "messages_changed": [
+        "DEV-O09-1",
+        "DEV-O09-2",
+        "DEV-O09-3",
+        "DEV-O09-4",
+        "DEV-O09-5",
+        "TEST-T12-1",
+        "TEST-T12-2",
+        "TEST-T12-3",
+        "TEST-T12-4",
+        "TEST-T12-5"
+      ],
+      "labels_changed": false,
+      "reason": "النموذج ما كان يكتب محاولة تغيير تعليمات حقيقية: 4 من 5 رسائل O09 بالتطوير أسئلة عادية، ورسالة T12-4 ما بيها محاولة، مع إن إجابتها الصحيحة تتوقع مراجعة بسبب محاولة. صار الكود يحط جملة المحاولة والفحص يتأكد منها.",
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "prompt_version": "gen-v3+injection-in-code",
+      "usage": {
+        "calls": 3,
+        "input": 3283,
+        "output": 3311,
+        "rejected": 1
+      }
+    }
+  ],
+  "data_version": 2
 }
