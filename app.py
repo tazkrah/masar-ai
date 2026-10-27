@@ -6,7 +6,7 @@ import html
 import math
 import re
 from collections import Counter
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import streamlit as st
 
@@ -71,7 +71,7 @@ p, li { margin-bottom: 0; }
 /* التفاصيل: ترويسة، محتوى يتمرر، أزرار ثابتة */
 .st-key-detail { border: 1px solid var(--line); border-radius: var(--r); gap: 0; }
 .st-key-dhead { padding: .7rem 1.1rem .6rem; border-bottom: 1px solid var(--line); }
-[class*="st-key-dbody-"] { padding: .2rem 1.1rem .8rem; }
+[class*="st-key-dbody-"] { padding: .1rem 1.1rem .7rem; gap: .45rem; }
 .st-key-dempty { padding: 1rem 1.1rem; min-height: 12rem; }
 .st-key-dfoot { padding: .6rem 1.1rem; border-top: 1px solid var(--line); background: #fff; border-radius: 0 0 var(--r) var(--r); }
 .d-head { display:flex; align-items:baseline; gap:.7rem; flex-wrap:wrap; }
@@ -82,18 +82,18 @@ p, li { margin-bottom: 0; }
 .st.flag { color: var(--amber); } .st.review { color: var(--teal); } .st.failed { color: var(--red); }
 .st.pending, .st.followup, .st.waiting { color: var(--muted); } .st.approved { color: var(--teal); }
 .st small { font-weight: 400; color: var(--muted); font-size: .8rem; }
-.line { margin-top:.7rem; font-size:.87rem; border-radius: var(--r); padding:.4rem .75rem; border:1px solid; }
+.line { margin-top:.5rem; font-size:.87rem; border-radius: var(--r); padding:.4rem .75rem; border:1px solid; }
 .line.flag { color:#4A3500; background: var(--amber-bg); border-color: var(--amber-line); }
 .line.failed { color:#5C150F; background: var(--red-bg); border-color: var(--red-line); }
 .line.quiet { color: var(--muted); border-color: var(--line); }
-.sec { font-size: .78rem; color: var(--muted); font-weight: 700; margin: .9rem 0 .35rem; }
+.sec { font-size: .78rem; color: var(--muted); font-weight: 700; margin: .5rem 0 0; }
 .msg { background: var(--soft); border-right: 3px solid var(--teal); padding: .6rem .9rem; border-radius: var(--r);
        font-size: 1rem; line-height: 1.8; color: var(--ink); white-space: pre-wrap; }
-.why { color: var(--muted); font-size: .85rem; margin-top: .5rem; line-height: 1.65; }
+.why { color: var(--muted); font-size: .85rem; margin-top: 0; line-height: 1.6; }
 .foot-msg { font-size: .85rem; color: var(--muted); line-height: 1.5; }
 .foot-msg.ok { color: var(--teal); font-weight: 700; }
 .foot-msg.err { color: var(--red); font-weight: 700; }
-[data-testid="stExpander"] { margin-top: .6rem; }
+[data-testid="stExpander"] { margin-top: .2rem; }
 [data-testid="stExpander"] details { border-radius: var(--r); }
 [data-testid="stExpander"] summary p { font-size: .84rem; color: var(--muted); }
 [data-testid="stExpander"] summary svg, [data-testid="stExpander"] summary [data-testid="stIconMaterial"] { transform: scaleX(-1); }
@@ -118,6 +118,9 @@ textarea { line-height: 1.75 !important; }
 .foot-msg.warn { color: var(--amber); font-weight: 700; }
 [class*="st-key-addnote_"] button { min-height: 0; padding: .1rem .5rem; color: var(--teal); font-weight: 700; }
 [class*="st-key-w_note_"] input { font-size: .88rem; }
+[class*="st-key-w_note_"] [data-testid="InputInstructions"] { display: none; }
+[class*="st-key-w_note_"] [data-testid="stWidgetLabel"] { min-height: 0; margin-bottom: .15rem; }
+[class*="st-key-w_note_"] [data-testid="stWidgetLabel"] p { font-size: .76rem; color: var(--muted); font-weight: 700; }
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -320,6 +323,17 @@ def run(ids, verb):
     st.rerun()
 
 
+def service_block():
+    """سبب مختصر إذا المعالجة ممنوعة هسه (ما في مفتاح، أو المزوّد طلب ننتظر)، وإلا None."""
+    if not connected:
+        return f"الموديل غير متصل؛ أضف {key_env} بملف .env."
+    if waiting:
+        at = retry_at(max(waiting, key=lambda x: x["updated_at"]))
+        if at and at > datetime.now(timezone.utc):
+            return f"الخدمة متوقفة مؤقتاً؛ تگدر تعيد المحاولة بعد {fmt_time(at, with_day=False)} تقريباً."
+    return None
+
+
 def queue_run(ids, verb):
     """الأزرار تسجّل الطلب بس، والمعالجة تشتغل تحت الشريط العلوي حتى يبين شريط التقدم بمكانه."""
     ss["run"] = (ids, verb)
@@ -494,8 +508,8 @@ def header():
     # الملاحظة الموجودة تبقى ظاهرة وقابلة للتعديل؛ تنحفظ ويا القرار مثل المسودة
     ss[f"w_note_{cid}"] = note
     st.text_input("ملاحظة داخلية", key=f"w_note_{cid}", on_change=keep_edit, args=(cid, "note"),
-                  placeholder="ملاحظة داخلية للفريق، ما تنرسل للزبون", label_visibility="collapsed")
-    st.markdown("<style>:root { --body-h: calc(100vh - 258px); }</style>", unsafe_allow_html=True)
+                  placeholder="للفريق فقط، ما تنرسل للزبون")
+    st.markdown("<style>:root { --body-h: calc(100vh - 280px); }</style>", unsafe_allow_html=True)
 
 
 def body():
@@ -575,11 +589,18 @@ def footer():
     elif s == "failed":
         b1, m = st.columns([1.6, 3.15], vertical_alignment="center")
         msg = msg or ("تعيد معالجة هذي الشكوى بس. الباقي يبقى مثل ما هو.", "muted")
-        b1.button("إعادة المحاولة لهذي الشكوى", type="primary", disabled=not connected, width="stretch", key=f"retry_{cid}",
+        blocked = service_block()
+        b1.button("إعادة المحاولة لهذي الشكوى", type="primary", disabled=bool(blocked), width="stretch", key=f"retry_{cid}",
                   on_click=queue_run, args=([cid], "إعادة المحاولة"))
+        if blocked and msg[1] != "err":
+            msg = (blocked, "muted")
     else:
-        m = st.container()
-        msg = msg or ("القرار يصير متاح بعد ما تنعالج الشكوى.", "muted")
+        # ما انعالجت بعد (تنتظر أو بسبب توقف الخدمة): زر صغير لهذي الشكوى بس
+        b1, m = st.columns([1, 3.75], vertical_alignment="center")
+        blocked = service_block()
+        b1.button("إعادة المحاولة" if s == "waiting" else "معالجة الشكوى", disabled=bool(blocked), width="stretch",
+                  key=f"retry_{cid}", on_click=queue_run, args=([cid], "إعادة المحاولة" if s == "waiting" else "جاري المعالجة"))
+        msg = msg or ((blocked, "muted") if blocked else ("تعالج هذي الشكوى بس. القرار يصير متاح بعد المعالجة.", "muted"))
     if msg is None and is_dirty(r):
         msg = ("فيها تعديلات ما انحفظت بعد. تبقى لو فتحت شكوى ثانية.", "warn")
     if msg is None:
