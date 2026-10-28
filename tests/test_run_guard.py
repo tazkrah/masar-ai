@@ -269,6 +269,35 @@ class CallLogTests(GuardBase):
         self.assertEqual(rows[1]["cached_tokens"], 640)
         self.assertIn("6100", rows[1]["rate_headers"])
 
+    def test_raw_usage_logged_without_message_or_key(self):
+        from openai.types import CompletionUsage
+        # شكل usage حقيقي من مكتبة openai، ويا حقول إضافية مثل اللي يرجعها Groq
+        usage = CompletionUsage.model_validate({
+            "prompt_tokens": 1804, "completion_tokens": 177, "total_tokens": 1981,
+            "queue_time": 0.05, "prompt_time": 0.01, "completion_time": 0.2, "total_time": 0.21})
+        ok = fake_response()
+        ok.parse().usage = usage
+        create = mock.MagicMock(side_effect=[rate_limit_error(1), ok])
+        client = types.SimpleNamespace(chat=types.SimpleNamespace(completions=types.SimpleNamespace(
+            with_raw_response=types.SimpleNamespace(create=create))))
+        secret_msg = "رسالة الزبون السرية 0770"
+        seen = []
+        with mock.patch.object(llm, "_client", return_value=client), \
+                mock.patch.dict("os.environ", {"GROQ_API_KEY": "gsk_test_secret"}):
+            llm.call("نظام", secret_msg, provider="groq", model="openai/gpt-oss-120b", sleep=lambda s: None,
+                     on_request=seen.append)
+        self.assertIsNone(seen[0]["usage_raw"])  # 429: ماكو usage
+        self.assertEqual(seen[1]["usage_raw"]["prompt_tokens"], 1804)
+        self.assertEqual(seen[1]["usage_raw"]["queue_time"], 0.05)  # الحقول الإضافية تنحفظ
+        self.assertIsNone(seen[1]["cached_tokens"])  # ماكو prompt_tokens_details = غير معروف
+        with db.connect(self.path) as conn:
+            db.log_calls(conn, [{**r, "stage": "classify"} for r in seen])
+            stored = [tuple(r) for r in conn.execute("SELECT * FROM llm_calls")]
+        dump = repr(stored)
+        self.assertIn('"queue_time": 0.05', dump)
+        self.assertNotIn(secret_msg, dump)
+        self.assertNotIn("gsk_test_secret", dump)
+
     def test_unknown_draft_tokens_make_total_unknown(self):
         def call(system, user, schema=None, **kw):
             if schema:

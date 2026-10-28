@@ -148,6 +148,17 @@ def _cached_tokens(usage):
     return getattr(d, "cached_tokens", None)
 
 
+def _usage_raw(usage):
+    """حقل usage من رد المزوّد كما هو (أرقام توكنات فقط، بدون نص أو مفتاح)، حتى نشوف أسماء الحقول الحقيقية."""
+    if usage is None:
+        return None
+    if hasattr(usage, "model_dump"):
+        return usage.model_dump(mode="json", exclude_none=True)
+    # مزوّد ثاني أو كائن بسيط: نحوله لـ JSON عادي (الكائنات المتداخلة تصير dict)
+    return json.loads(json.dumps(usage if isinstance(usage, dict) else vars(usage),
+                                 default=lambda o: getattr(o, "__dict__", str(o))))
+
+
 def _openai_compat_call(provider, system, user, schema, max_tokens, model, temperature=0, reasoning_effort=None):
     import openai
 
@@ -202,6 +213,7 @@ def _openai_compat_call(provider, system, user, schema, max_tokens, model, tempe
     u = resp.usage
     tin, tout = getattr(u, "prompt_tokens", None), getattr(u, "completion_tokens", None)
     _meta.cached = _cached_tokens(u)
+    _meta.usage = _usage_raw(u)
     if choice.finish_reason == "length":
         # الجواب انقطع بس التوكنات انصرفت، فنسجلها
         raise _Retry("الجواب انقطع قبل ما يكمل (حد التوكنات).", None, kind="truncated", http_status=200,
@@ -288,11 +300,12 @@ def call(system, user, schema=None, max_tokens=1024, provider=None, model=None,
             on_request({"request_no": attempt + 1, "input_tokens": None, "output_tokens": None, "http_status": None,
                         "retry_after": None, "limit_kind": None, "error": None,
                         "cached_tokens": getattr(_meta, "cached", None), "rate_headers": getattr(_meta, "headers", None),
+                        "usage_raw": getattr(_meta, "usage", None),
                         "latency_ms": int((time.monotonic() - t0) * 1000), **rec})
 
     for attempt in range(max_attempts):
         t0 = time.monotonic()
-        _meta.cached = _meta.headers = None
+        _meta.cached = _meta.headers = _meta.usage = None
         try:
             if provider == "anthropic":
                 text, tin, tout = _anthropic_call(system, user, schema, max_tokens, model, temperature)

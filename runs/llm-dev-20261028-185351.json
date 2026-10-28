@@ -1,0 +1,133 @@
+{
+  "n": 10,
+  "processed": 2,
+  "failed": 8,
+  "failures": [
+    {
+      "id": "DEV-G07-5",
+      "error": "خلص حد الاستخدام المجاني حالياً. أعد المحاولة بعد 8 دقيقة تقريباً. (وصلنا حد الاستخدام (429): tokens per day (TPD): Limit 200000, Used 198984, Requested 2093. Please try again in 7m45.264s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'toke)"
+    },
+    {
+      "id": "DEV-G01-3",
+      "error": null
+    },
+    {
+      "id": "DEV-T08-2",
+      "error": null
+    },
+    {
+      "id": "DEV-K04-3",
+      "error": null
+    },
+    {
+      "id": "DEV-O03-2",
+      "error": null
+    },
+    {
+      "id": "DEV-T11-1",
+      "error": null
+    },
+    {
+      "id": "DEV-O02-5",
+      "error": null
+    },
+    {
+      "id": "DEV-K07-3",
+      "error": null
+    }
+  ],
+  "category_accuracy": 1.0,
+  "category_macro_f1": 0.3333333333333333,
+  "per_class_f1": {
+    "transfer_failed": 0.0,
+    "wrong_recipient": 0.0,
+    "account_access": 0.0,
+    "agent_dispute": 0.0,
+    "card": 1.0,
+    "other": 1.0
+  },
+  "category_accuracy_lenient_multi": 1.0,
+  "field_exact": {
+    "transaction_id": 1.0,
+    "amount": 1.0,
+    "date": 1.0
+  },
+  "field_exact_all3": 1.0,
+  "priority_accuracy": 1.0,
+  "department_accuracy_all": 1.0,
+  "auto_routed_share": 0.5,
+  "auto_routed_department_accuracy": 1.0,
+  "review_rate": 0.5,
+  "hard_cases_sent_to_review": "1/1",
+  "review_reasons": {
+    "low_confidence": 1,
+    "unclear_message": 1
+  },
+  "confusion": {
+    "other": {
+      "other": 1
+    },
+    "card": {
+      "card": 1
+    }
+  },
+  "threshold": 0.75,
+  "avg_latency_ms": 1763.5,
+  "tokens": {
+    "input": 5052,
+    "output": 480,
+    "rows_with_unknown_tokens": 0
+  },
+  "est_cost_usd": 0.0,
+  "errors": [],
+  "split": "dev",
+  "dataset": "llm",
+  "provider": "groq",
+  "model": "openai/gpt-oss-120b",
+  "prompt_version": "v2",
+  "drafts": true,
+  "wall_seconds": 3.6,
+  "db": "local.nosync/runs/llm-dev-20261028-185351.db",
+  "run": {
+    "run_id": "2bb0363de30c4ea29f04d34473930bc4",
+    "done": 2,
+    "failed": 1,
+    "skipped": 0,
+    "not_started": 7,
+    "stopped": "خلص حد الاستخدام المجاني حالياً. أعد المحاولة بعد 8 دقيقة تقريباً. (وصلنا حد الاستخدام (429): tokens per day (TPD): Limit 200000, Used 198984, Requested 2093. Please try again in 7m45.264s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'toke)",
+    "resume_after": "2026-10-28T16:01:41+00:00"
+  },
+  "forbidden_in_drafts": 0,
+  "llm_calls": [
+    {
+      "stage": "classify",
+      "outcome": "ok",
+      "n": 2,
+      "tin": 3577,
+      "cached": null,
+      "tout": 308,
+      "unknown": 0,
+      "cached_unknown": 2
+    },
+    {
+      "stage": "classify",
+      "outcome": "rate_limited",
+      "n": 1,
+      "tin": null,
+      "cached": null,
+      "tout": null,
+      "unknown": 1,
+      "cached_unknown": 1
+    },
+    {
+      "stage": "draft",
+      "outcome": "ok",
+      "n": 2,
+      "tin": 1475,
+      "cached": null,
+      "tout": 172,
+      "unknown": 0,
+      "cached_unknown": 2
+    }
+  ]
+}
