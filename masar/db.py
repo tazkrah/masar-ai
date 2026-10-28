@@ -89,8 +89,10 @@ CREATE TABLE IF NOT EXISTS llm_calls (
     request_no INTEGER NOT NULL,       -- 1 = أول طلب، 2+ = إعادة داخل نفس الاستدعاء
     outcome TEXT NOT NULL,             -- ok | rate_limited | truncated | invalid_json | schema_rejected | server_error | connection_error | error
     http_status INTEGER,
-    input_tokens INTEGER,
+    input_tokens INTEGER,              -- يشمل المقروء من الكاش
     output_tokens INTEGER,
+    cached_tokens INTEGER,             -- من الإدخال، انقرت من الكاش (ما تنحسب على الحدود حسب Groq)
+    rate_headers TEXT,                 -- JSON: رؤوس x-ratelimit-* و retry-after مثل ما رجعت
     retry_after REAL,
     limit_kind TEXT,                   -- tpd | rpd | tpm | rpm
     latency_ms INTEGER,
@@ -131,7 +133,8 @@ def connect(path=None):
 
 
 # أعمدة انضافت بعد أول نسخة. القواعد القديمة تنحدّث بإضافتها فقط، بدون ما نغيّر أي سطر موجود.
-MIGRATIONS = {"results": [("run_id", "TEXT"), ("run_started_at", "TEXT")]}
+MIGRATIONS = {"results": [("run_id", "TEXT"), ("run_started_at", "TEXT")],
+              "llm_calls": [("cached_tokens", "INTEGER"), ("rate_headers", "TEXT")]}
 
 
 def init(path=None):
@@ -258,10 +261,13 @@ def active_cooldown(conn):
 def log_calls(conn, records):
     conn.executemany(
         "INSERT INTO llm_calls (run_id, complaint_id, stage, request_no, outcome, http_status, input_tokens, "
-        "output_tokens, retry_after, limit_kind, latency_ms, error, provider, model, created_at) "
-        "VALUES (:run_id, :complaint_id, :stage, :request_no, :outcome, :http_status, :input_tokens, :output_tokens, "
-        ":retry_after, :limit_kind, :latency_ms, :error, :provider, :model, :created_at)",
-        [{"run_id": None, "complaint_id": None, "provider": None, "model": None, "created_at": now(), **r}
+        "output_tokens, cached_tokens, rate_headers, retry_after, limit_kind, latency_ms, error, provider, model, "
+        "created_at) VALUES (:run_id, :complaint_id, :stage, :request_no, :outcome, :http_status, :input_tokens, "
+        ":output_tokens, :cached_tokens, :rate_headers, :retry_after, :limit_kind, :latency_ms, :error, :provider, "
+        ":model, :created_at)",
+        [{"run_id": None, "complaint_id": None, "provider": None, "model": None, "created_at": now(),
+          "cached_tokens": None, **r,
+          "rate_headers": json.dumps(r["rate_headers"]) if r.get("rate_headers") else None}
          for r in records],
     )
 
@@ -270,8 +276,9 @@ def usage_summary(conn, run_id=None):
     """ملخص الطلبات والتوكنات من llm_calls. الطلبات اللي توكناتها غير معروفة تنعد لحالها."""
     where, args = ("WHERE run_id = ?", (run_id,)) if run_id else ("", ())
     rows = conn.execute(
-        f"SELECT stage, outcome, COUNT(*) n, SUM(input_tokens) tin, SUM(output_tokens) tout, "
-        f"SUM(input_tokens IS NULL OR output_tokens IS NULL) unknown FROM llm_calls {where} "
+        f"SELECT stage, outcome, COUNT(*) n, SUM(input_tokens) tin, SUM(cached_tokens) cached, "
+        f"SUM(output_tokens) tout, SUM(input_tokens IS NULL OR output_tokens IS NULL) unknown, "
+        f"SUM(cached_tokens IS NULL) cached_unknown FROM llm_calls {where} "
         f"GROUP BY stage, outcome ORDER BY stage, outcome", args).fetchall()
     return [dict(r) for r in rows]
 

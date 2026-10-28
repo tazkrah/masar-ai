@@ -8,6 +8,7 @@ import json
 import os
 import random
 import re
+import threading
 import time
 from dataclasses import dataclass
 
@@ -125,6 +126,28 @@ RATE_HEADERS = ("x-ratelimit-limit-requests", "x-ratelimit-remaining-requests", 
                 "x-ratelimit-limit-tokens", "x-ratelimit-remaining-tokens", "x-ratelimit-reset-tokens")
 
 
+# تفاصيل آخر رد بهذا الخيط (للتسجيل بـ llm_calls): رؤوس الحدود وتوكنات الكاش.
+_meta = threading.local()
+
+
+def _limit_headers(headers):
+    """رؤوس x-ratelimit-* و retry-after مثل ما رجعها المزوّد، أو None إذا ماكو."""
+    try:
+        found = {k.lower(): v for k, v in headers.items()
+                 if k.lower().startswith("x-ratelimit") or k.lower() == "retry-after"}
+    except AttributeError:
+        return None
+    return found or None
+
+
+def _cached_tokens(usage):
+    """توكنات الإدخال اللي انقرت من الكاش. None = المزوّد ما رجّعها (غير معروفة)."""
+    d = getattr(usage, "prompt_tokens_details", None)
+    if isinstance(d, dict):
+        return d.get("cached_tokens")
+    return getattr(d, "cached_tokens", None)
+
+
 def _openai_compat_call(provider, system, user, schema, max_tokens, model, temperature=0, reasoning_effort=None):
     import openai
 
@@ -150,9 +173,11 @@ def _openai_compat_call(provider, system, user, schema, max_tokens, model, tempe
             **kwargs,
         )
         _remember_limits(raw.headers)
+        _meta.headers = _limit_headers(raw.headers)
         resp = raw.parse()
     except openai.RateLimitError as e:
         _remember_limits(getattr(e.response, "headers", {}))
+        _meta.headers = _limit_headers(getattr(e.response, "headers", {}))
         detail = _limit_detail(e)
         raise _Retry(f"وصلنا حد الاستخدام (429): {detail}", _retry_after(e) or _wait_from_text(detail),
                      kind="rate_limited", http_status=429, limit_kind=_limit_kind(detail)) from e
@@ -176,6 +201,7 @@ def _openai_compat_call(provider, system, user, schema, max_tokens, model, tempe
     choice = resp.choices[0]
     u = resp.usage
     tin, tout = getattr(u, "prompt_tokens", None), getattr(u, "completion_tokens", None)
+    _meta.cached = _cached_tokens(u)
     if choice.finish_reason == "length":
         # الجواب انقطع بس التوكنات انصرفت، فنسجلها
         raise _Retry("الجواب انقطع قبل ما يكمل (حد التوكنات).", None, kind="truncated", http_status=200,
@@ -261,10 +287,12 @@ def call(system, user, schema=None, max_tokens=1024, provider=None, model=None,
         if on_request:
             on_request({"request_no": attempt + 1, "input_tokens": None, "output_tokens": None, "http_status": None,
                         "retry_after": None, "limit_kind": None, "error": None,
+                        "cached_tokens": getattr(_meta, "cached", None), "rate_headers": getattr(_meta, "headers", None),
                         "latency_ms": int((time.monotonic() - t0) * 1000), **rec})
 
     for attempt in range(max_attempts):
         t0 = time.monotonic()
+        _meta.cached = _meta.headers = None
         try:
             if provider == "anthropic":
                 text, tin, tout = _anthropic_call(system, user, schema, max_tokens, model, temperature)

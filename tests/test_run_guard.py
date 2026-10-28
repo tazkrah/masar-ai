@@ -250,6 +250,25 @@ class CallLogTests(GuardBase):
         self.assertEqual(sum(x["n"] for x in u), 4)
         self.assertEqual(sum(x["unknown"] for x in u), 1)
 
+    def test_cached_tokens_and_limit_headers_logged(self):
+        ok = fake_response(headers={"x-ratelimit-remaining-tokens": "6100", "x-ratelimit-limit-requests": "1000",
+                                    "content-type": "application/json"})
+        ok.parse().usage.prompt_tokens_details = types.SimpleNamespace(cached_tokens=640)
+        create = mock.MagicMock(side_effect=[rate_limit_error(1), ok])
+        client = types.SimpleNamespace(chat=types.SimpleNamespace(completions=types.SimpleNamespace(
+            with_raw_response=types.SimpleNamespace(create=create))))
+        seen = []
+        with mock.patch.object(llm, "_client", return_value=client):
+            llm.call("s", "u", provider="groq", model="openai/gpt-oss-120b", sleep=lambda s: None, on_request=seen.append)
+        self.assertEqual((seen[0]["cached_tokens"], seen[0]["rate_headers"]), (None, {"retry-after": "1"}))
+        self.assertEqual(seen[1]["cached_tokens"], 640)
+        self.assertEqual(seen[1]["rate_headers"], {"x-ratelimit-remaining-tokens": "6100", "x-ratelimit-limit-requests": "1000"})
+        with db.connect(self.path) as conn:
+            db.log_calls(conn, [{**r, "stage": "classify"} for r in seen])
+            rows = [dict(r) for r in conn.execute("SELECT cached_tokens, rate_headers FROM llm_calls ORDER BY id")]
+        self.assertEqual(rows[1]["cached_tokens"], 640)
+        self.assertIn("6100", rows[1]["rate_headers"])
+
     def test_unknown_draft_tokens_make_total_unknown(self):
         def call(system, user, schema=None, **kw):
             if schema:
