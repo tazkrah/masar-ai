@@ -40,7 +40,9 @@ def main():
     s = pipeline.process(ids, db_path=path)
     with db.connect(path) as conn:
         r = db.batch_rows(conn, batch_id)[0]
-    if r["status"] != "done":
+    if s["stopped"] and r["status"] != "done":
+        print("المعالجة وقفت:", s["stopped"], f"(الاستئناف بعد {s['resume_after']} UTC)" if s["resume_after"] else "")
+    elif r["status"] != "done":
         print("فشلت المعالجة:", r["error"])
     else:
         show = {
@@ -61,7 +63,7 @@ def main():
         print(f"\nالزمن: {r['latency_ms']} ms · توكنات: {r['input_tokens']} إدخال / {r['output_tokens']} إخراج · محاولات: {r['attempts']}")
     if llm.last_rate_limits:
         print("حدود الاستخدام (من رد المزوّد):", json.dumps(llm.last_rate_limits, ensure_ascii=False))
-    sys.exit(0 if s["failed"] == 0 else 1)
+    sys.exit(0 if r["status"] == "done" else 1)
 
 
 if __name__ == "__main__":

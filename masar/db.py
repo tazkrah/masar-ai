@@ -56,11 +56,48 @@ CREATE TABLE IF NOT EXISTS results (
     model TEXT,
     prompt_version TEXT,
     error TEXT,
-    attempts INTEGER NOT NULL DEFAULT 0,
+    attempts INTEGER NOT NULL DEFAULT 0,  -- مرات بدء معالجة الشكوى (مو عدد طلبات HTTP، هذي بـ llm_calls)
     latency_ms INTEGER,
     input_tokens INTEGER,
     output_tokens INTEGER,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    run_id TEXT,                       -- قفل: التشغيل اللي يعالج الشكوى هسه (NULL = محد ماسكها)
+    run_started_at TEXT
+);
+
+-- كل تشغيل معالجة: شگد طلب، شگد بدأ، وليش وقف ووكت الاستئناف إذا المزوّد ذكره.
+CREATE TABLE IF NOT EXISTS processing_runs (
+    id TEXT PRIMARY KEY,
+    started_at TEXT NOT NULL,
+    finished_at TEXT,
+    requested INTEGER NOT NULL,
+    started INTEGER NOT NULL DEFAULT 0,
+    done INTEGER NOT NULL DEFAULT 0,
+    failed INTEGER NOT NULL DEFAULT 0,
+    skipped INTEGER NOT NULL DEFAULT 0,     -- مكتملة أو تعالجها عملية ثانية، فما انلمست
+    not_started INTEGER NOT NULL DEFAULT 0, -- ما بدأت لأن الدفعة وقفت
+    stop_reason TEXT,
+    resume_after TEXT
+);
+
+-- كل طلب HTTP للموديل. التوكنات NULL = المزوّد ما رجّعها (غير معروفة، مو صفر).
+CREATE TABLE IF NOT EXISTS llm_calls (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT,
+    complaint_id TEXT,
+    stage TEXT NOT NULL,               -- classify | draft | redraft
+    request_no INTEGER NOT NULL,       -- 1 = أول طلب، 2+ = إعادة داخل نفس الاستدعاء
+    outcome TEXT NOT NULL,             -- ok | rate_limited | truncated | invalid_json | schema_rejected | server_error | connection_error | error
+    http_status INTEGER,
+    input_tokens INTEGER,
+    output_tokens INTEGER,
+    retry_after REAL,
+    limit_kind TEXT,                   -- tpd | rpd | tpm | rpm
+    latency_ms INTEGER,
+    error TEXT,
+    provider TEXT,
+    model TEXT,
+    created_at TEXT NOT NULL
 );
 
 -- قرار الموظف. ما في إرسال تلقائي: الاعتماد يعني جاهز للإرسال اليدوي فقط.
@@ -93,9 +130,18 @@ def connect(path=None):
         conn.close()
 
 
+# أعمدة انضافت بعد أول نسخة. القواعد القديمة تنحدّث بإضافتها فقط، بدون ما نغيّر أي سطر موجود.
+MIGRATIONS = {"results": [("run_id", "TEXT"), ("run_started_at", "TEXT")]}
+
+
 def init(path=None):
     with connect(path) as conn:
         conn.executescript(SCHEMA)
+        for table, cols in MIGRATIONS.items():
+            have = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
+            for name, typ in cols:
+                if name not in have:
+                    conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {typ}")
 
 
 def _row(r):
@@ -147,11 +193,90 @@ def save_result(conn, complaint_id, **fields):
     conn.execute(f"UPDATE results SET {cols} WHERE complaint_id = ?", (*fields.values(), complaint_id))
 
 
-def bump_attempts(conn, complaint_id):
-    conn.execute("UPDATE results SET attempts = attempts + 1 WHERE complaint_id = ?", (complaint_id,))
+# قفل المعالجة أطول من هذا يعتبر متروك (العملية انقطعت بالنص) ويصير ينمسك من جديد.
+STALE_LOCK_MINUTES = 30
+CLAIMABLE = ("pending", "failed")
 
 
-def batch_ids_to_process(conn, batch_id, statuses=("pending", "failed")):
+def claim(conn, complaint_id, run_id):
+    """يمسك الشكوى لهذا التشغيل إذا ما مكتملة ومحد ثاني ماسكها. يرجع True إذا انمسكت.
+
+    تحديث واحد ذري بـ SQLite، فتشغيلين (تبويبين أو عمليتين) ما يگدرون يمسكون نفس الشكوى.
+    المحاولات تزيد هنا بس، يعني فقط للشكوى اللي بدأت معالجتها فعلاً.
+    """
+    stale = datetime.fromtimestamp(datetime.now(timezone.utc).timestamp() - STALE_LOCK_MINUTES * 60,
+                                   timezone.utc).isoformat(timespec="seconds")
+    cur = conn.execute(
+        f"UPDATE results SET run_id = ?, run_started_at = ?, attempts = attempts + 1 "
+        f"WHERE complaint_id = ? AND status IN ({','.join('?' * len(CLAIMABLE))}) "
+        f"AND (run_id IS NULL OR run_started_at < ?)",
+        (run_id, now(), complaint_id, *CLAIMABLE, stale),
+    )
+    return cur.rowcount == 1
+
+
+def finish(conn, complaint_id, run_id, **fields):
+    """يحفظ نتيجة التشغيل ويفك القفل، بس إذا القفل بعده لهذا التشغيل والشكوى مو مكتملة.
+
+    هيج فشل محاولة ثانية ما يگدر يكتب فوق نتيجة ناجحة. يرجع True إذا انحفظت.
+    """
+    fields = dict(fields, run_id=None, run_started_at=None)
+    for c in JSON_COLUMNS:
+        if c in fields:
+            fields[c] = json.dumps(fields[c], ensure_ascii=False)
+    fields["updated_at"] = now()
+    cols = ", ".join(f"{k} = ?" for k in fields)
+    cur = conn.execute(f"UPDATE results SET {cols} WHERE complaint_id = ? AND run_id = ? AND status != 'done'",
+                       (*fields.values(), complaint_id, run_id))
+    return cur.rowcount == 1
+
+
+def release(conn, complaint_id, run_id):
+    conn.execute("UPDATE results SET run_id = NULL, run_started_at = NULL WHERE complaint_id = ? AND run_id = ?",
+                 (complaint_id, run_id))
+
+
+def start_run(conn, run_id, requested):
+    conn.execute("INSERT INTO processing_runs (id, started_at, requested) VALUES (?,?,?)", (run_id, now(), requested))
+
+
+def end_run(conn, run_id, **counts):
+    counts["finished_at"] = now()
+    cols = ", ".join(f"{k} = ?" for k in counts)
+    conn.execute(f"UPDATE processing_runs SET {cols} WHERE id = ?", (*counts.values(), run_id))
+
+
+def active_cooldown(conn):
+    """آخر تشغيل وقف بسبب الحد وبعده ما وصل وقت الاستئناف: يرجع (السبب، الوقت) وإلا None."""
+    r = conn.execute("SELECT stop_reason, resume_after FROM processing_runs WHERE resume_after IS NOT NULL "
+                     "ORDER BY finished_at DESC LIMIT 1").fetchone()
+    if r and r["resume_after"] > now():
+        return r["stop_reason"], r["resume_after"]
+    return None
+
+
+def log_calls(conn, records):
+    conn.executemany(
+        "INSERT INTO llm_calls (run_id, complaint_id, stage, request_no, outcome, http_status, input_tokens, "
+        "output_tokens, retry_after, limit_kind, latency_ms, error, provider, model, created_at) "
+        "VALUES (:run_id, :complaint_id, :stage, :request_no, :outcome, :http_status, :input_tokens, :output_tokens, "
+        ":retry_after, :limit_kind, :latency_ms, :error, :provider, :model, :created_at)",
+        [{"run_id": None, "complaint_id": None, "provider": None, "model": None, "created_at": now(), **r}
+         for r in records],
+    )
+
+
+def usage_summary(conn, run_id=None):
+    """ملخص الطلبات والتوكنات من llm_calls. الطلبات اللي توكناتها غير معروفة تنعد لحالها."""
+    where, args = ("WHERE run_id = ?", (run_id,)) if run_id else ("", ())
+    rows = conn.execute(
+        f"SELECT stage, outcome, COUNT(*) n, SUM(input_tokens) tin, SUM(output_tokens) tout, "
+        f"SUM(input_tokens IS NULL OR output_tokens IS NULL) unknown FROM llm_calls {where} "
+        f"GROUP BY stage, outcome ORDER BY stage, outcome", args).fetchall()
+    return [dict(r) for r in rows]
+
+
+def batch_ids_to_process(conn, batch_id, statuses=CLAIMABLE):
     q = ",".join("?" * len(statuses))
     rows = conn.execute(
         f"SELECT bi.complaint_id FROM batch_items bi JOIN results r ON r.complaint_id = bi.complaint_id "

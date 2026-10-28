@@ -3,8 +3,10 @@
 ما في أي إرسال للزبون هنا. كل النتائج تنحفظ وتنتظر مراجعة الموظف.
 """
 import re
+import threading
+import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 from . import config, db, llm, prompts
 from .ingest import ARABIC_DIGITS, clip
@@ -116,13 +118,29 @@ def check_draft(draft: str):
     return found
 
 
-def analyze(complaint: dict, with_draft=True, provider=None, model=None) -> dict:
-    """الجزء اللي يتصل بالموديل. ما يكتب بالقاعدة (حتى يشتغل بخيوط متوازية)."""
+def _logger(calls, stage):
+    """يرجع دالة on_request تضيف كل طلب HTTP لقائمة calls مع المرحلة."""
+    if calls is None:
+        return None
+    return lambda rec: calls.append({**rec, "stage": stage})
+
+
+def _sum_tokens(*vals):
+    """مجموع التوكنات، أو None إذا أي جزء غير معروف (ما نعتبره صفر)."""
+    return None if any(v is None for v in vals) else sum(vals)
+
+
+def analyze(complaint: dict, with_draft=True, provider=None, model=None, calls=None) -> dict:
+    """الجزء اللي يتصل بالموديل. ما يكتب بالقاعدة (حتى يشتغل بخيوط متوازية).
+
+    calls: قائمة (اختيارية) تنضاف لها سجلات كل طلب HTTP، حتى لو الشكوى فشلت بالنص.
+    """
     message, clipped = clip(complaint["message"])
     received_at = complaint.get("received_at")
 
     system, user = prompts.classify_messages_with_examples(message, received_at)
-    res = llm.call(system, user, schema=prompts.CLASSIFY_SCHEMA, max_tokens=config.MAX_TOKENS_CLASSIFY, provider=provider, model=model)
+    res = llm.call(system, user, schema=prompts.CLASSIFY_SCHEMA, max_tokens=config.MAX_TOKENS_CLASSIFY, provider=provider,
+                   model=model, on_request=_logger(calls, "classify"))
     x = res.data
     if x.get("category") not in config.CATEGORIES:
         raise llm.LLMError(f"فئة غير معروفة من الموديل: {x.get('category')}", retryable=True)
@@ -170,7 +188,8 @@ def analyze(complaint: dict, with_draft=True, provider=None, model=None) -> dict
 
     if with_draft:
         dsys, duser = prompts.draft_prompts(message, category, fields, missing)
-        dres = llm.call(dsys, duser, max_tokens=config.MAX_TOKENS_DRAFT, provider=provider, model=model)
+        dres = llm.call(dsys, duser, max_tokens=config.MAX_TOKENS_DRAFT, provider=provider, model=model,
+                        on_request=_logger(calls, "draft"))
         draft = format_amounts_in_draft(dres.text.strip(), fields["amount"])
         if check_draft(draft):
             reasons.append("draft_forbidden_phrase")
@@ -178,42 +197,97 @@ def analyze(complaint: dict, with_draft=True, provider=None, model=None) -> dict
             reasons.append("draft_unsupported_date")
         out["draft"] = draft
         out["latency_ms"] += dres.latency_ms
-        if dres.input_tokens is not None and out["input_tokens"] is not None:
-            out["input_tokens"] += dres.input_tokens
-            out["output_tokens"] += dres.output_tokens
+        out["input_tokens"] = _sum_tokens(out["input_tokens"], dres.input_tokens)
+        out["output_tokens"] = _sum_tokens(out["output_tokens"], dres.output_tokens)
 
     out["review_reasons"] = list(dict.fromkeys(reasons))
     out["needs_review"] = int(bool(out["review_reasons"]))
     return out
 
 
-def process(complaint_ids, with_draft=True, workers=None, on_progress=None, db_path=None, provider=None, model=None):
-    """يعالج قائمة شكاوى. الفاشلة تنحفظ بحالة failed مع السبب، بدون تكرار سجلها."""
-    with db.connect(db_path) as conn:
-        complaints = [db.get_complaint(conn, cid) for cid in complaint_ids]
-        for c in complaints:
-            db.bump_attempts(conn, c["id"])
+def _resume_at(seconds):
+    if not seconds:
+        return None
+    return (datetime.now(timezone.utc) + timedelta(seconds=seconds)).isoformat(timespec="seconds")
 
-    done = failed = 0
-    with ThreadPoolExecutor(max_workers=max(1, workers or config.WORKERS)) as pool:
-        futures = {pool.submit(analyze, c, with_draft, provider, model): c["id"] for c in complaints}
-        for fut in as_completed(futures):
-            cid = futures[fut]
-            try:
-                result = fut.result()
-            except llm.LLMError as e:
-                result = {"status": "failed", "error": str(e)}
-            except Exception as e:  # أي خطأ غير متوقع ما يوقف الدفعة
-                result = {"status": "failed", "error": f"خطأ غير متوقع: {type(e).__name__}: {e}"}
-            with db.connect(db_path) as conn:
-                db.save_result(conn, cid, **result)
-            if result["status"] == "done":
-                done += 1
-            else:
-                failed += 1
+
+def process(complaint_ids, with_draft=True, workers=None, on_progress=None, db_path=None, provider=None, model=None,
+            respect_cooldown=True):
+    """يعالج قائمة شكاوى. الفاشلة تنحفظ بحالة failed مع السبب، بدون تكرار سجلها.
+
+    - كل شكوى تنمسك بقفل قبل ما تبدأ (db.claim). المكتملة أو اللي يعالجها تشغيل ثاني تنتجاوز.
+    - إذا المزوّد أكد الحد اليومي أو طلب انتظار طويل، الدفعة توقف: اللي ما بدأت تبقى بحالتها
+      ومحاولاتها ما تزيد، وسبب التوقف ووقت الاستئناف ينحفظون بـ processing_runs.
+    - إذا تشغيل سابق وقف وبعده ما وصل وقت الاستئناف، ما نرسل ولا طلب (إلا respect_cooldown=False).
+    - كل طلب HTTP ينسجل بـ llm_calls مع المرحلة والتوكنات.
+    """
+    run_id = uuid.uuid4().hex
+    provider_name, model_name = provider or config.PROVIDER, model or config.MODEL
+    ids = list(dict.fromkeys(complaint_ids))
+    summary = {"done": 0, "failed": 0, "skipped": 0, "not_started": 0, "stopped": None, "resume_after": None,
+               "run_id": run_id}
+
+    with db.connect(db_path) as conn:
+        db.start_run(conn, run_id, len(ids))
+        cooldown = db.active_cooldown(conn) if respect_cooldown else None
+    if cooldown:
+        summary.update(not_started=len(ids), stopped=f"لسه بفترة انتظار من تشغيل سابق: {cooldown[0]}",
+                       resume_after=cooldown[1])
+        with db.connect(db_path) as conn:
+            db.end_run(conn, run_id, not_started=len(ids), stop_reason=summary["stopped"], resume_after=cooldown[1])
+        return summary
+
+    stop = threading.Event()
+    lock = threading.Lock()
+
+    def run_one(cid):
+        """يرجع done | failed | skipped | not_started."""
+        if stop.is_set():
+            return "not_started", None
+        with db.connect(db_path) as conn:
+            if not db.claim(conn, cid, run_id):
+                return "skipped", None
+            complaint = db.get_complaint(conn, cid)
+        calls = []
+        err = None
+        try:
+            result = analyze(complaint, with_draft, provider, model, calls=calls)
+        except llm.LLMError as e:
+            err = e
+            result = {"status": "failed", "error": str(e)}
+        except Exception as e:  # أي خطأ غير متوقع ما يوقف الدفعة
+            result = {"status": "failed", "error": f"خطأ غير متوقع: {type(e).__name__}: {e}"}
+        if err is not None and err.stop_batch:
+            with lock:
+                if not stop.is_set():
+                    stop.set()
+                    summary["stopped"] = str(err)
+                    summary["resume_after"] = _resume_at(err.retry_after)
+        with db.connect(db_path) as conn:
+            db.log_calls(conn, [{**c, "run_id": run_id, "complaint_id": cid, "provider": provider_name,
+                                 "model": model_name} for c in calls])
+            saved = db.finish(conn, cid, run_id, **result)
+        if not saved:
+            return "skipped", None
+        return result["status"], cid
+
+    pool = ThreadPoolExecutor(max_workers=max(1, workers or config.WORKERS))
+    try:
+        futures = [pool.submit(run_one, cid) for cid in ids]
+        for i, fut in enumerate(as_completed(futures), 1):
+            status, cid = fut.result()
+            summary[status] += 1
             if on_progress:
-                on_progress(done + failed, len(complaints), cid, result["status"])
-    return {"done": done, "failed": failed}
+                on_progress(i, len(ids), cid, status)
+    finally:
+        # أي توقف (مثلاً الواجهة انقطعت بالنص) يمنع بدء شكاوى جديدة بالخلفية
+        stop.set()
+        pool.shutdown(wait=True, cancel_futures=True)
+        counts = {k: summary[k] for k in ("done", "failed", "skipped", "not_started")}
+        with db.connect(db_path) as conn:
+            db.end_run(conn, run_id, started=counts["done"] + counts["failed"], stop_reason=summary["stopped"],
+                       resume_after=summary["resume_after"], **counts)
+    return summary
 
 
 def regenerate_draft(complaint_id, db_path=None):
@@ -227,5 +301,12 @@ def regenerate_draft(complaint_id, db_path=None):
     missing = [f for f in config.REQUIRED_FIELDS[category] if fields[f] is None]
     message, _ = clip(c["message"])
     dsys, duser = prompts.draft_prompts(message, category, fields, missing)
-    draft = format_amounts_in_draft(llm.call(dsys, duser, max_tokens=config.MAX_TOKENS_DRAFT).text.strip(), r["amount"])
+    calls = []
+    try:
+        res = llm.call(dsys, duser, max_tokens=config.MAX_TOKENS_DRAFT, on_request=_logger(calls, "redraft"))
+    finally:
+        with db.connect(db_path) as conn:
+            db.log_calls(conn, [{**c, "complaint_id": complaint_id, "provider": config.PROVIDER, "model": config.MODEL}
+                                for c in calls])
+    draft = format_amounts_in_draft(res.text.strip(), r["amount"])
     return draft, check_draft(draft)

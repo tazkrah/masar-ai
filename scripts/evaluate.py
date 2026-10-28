@@ -101,8 +101,9 @@ def score(results, labels, threshold):
 
     n = len(done)
     macro, per_class = f1_macro(pairs, list(config.CATEGORIES))
-    tin = sum(r["input_tokens"] or 0 for r in done)
-    tout = sum(r["output_tokens"] or 0 for r in done)
+    tin = sum(r["input_tokens"] for r in done if r["input_tokens"] is not None)
+    tout = sum(r["output_tokens"] for r in done if r["output_tokens"] is not None)
+    tunknown = sum(r["input_tokens"] is None or r["output_tokens"] is None for r in done)
     price = PRICES.get(done[0]["model"]) if done else None
     return {
         "n": len(results), "processed": n, "failed": len(failed),
@@ -122,7 +123,7 @@ def score(results, labels, threshold):
         "confusion": {g: dict(c) for g, c in conf.items()},
         "threshold": threshold,
         "avg_latency_ms": sum(r["latency_ms"] or 0 for r in done) / n if n else None,
-        "tokens": {"input": tin, "output": tout},
+        "tokens": {"input": tin, "output": tout, "rows_with_unknown_tokens": tunknown},
         "est_cost_usd": round(tin / 1e6 * price[0] + tout / 1e6 * price[1], 4) if price else None,
         "errors": errors,
     }
@@ -137,6 +138,25 @@ def sweep(results, labels):
         ok = sum(labels[r["source_id"]]["department"] == r["department"] for r in auto)
         out.append({"threshold": t, "auto_share": len(auto) / len(done), "auto_accuracy": ok / len(auto) if auto else None})
     return out
+
+
+def run_db_path(arg):
+    """مسار قاعدة تشغيل سابق من --retry-run. نسبي = من مجلد المشروع. الروابط (symlink) تنحل."""
+    p = Path(arg).expanduser()
+    if not p.is_absolute():
+        p = ROOT / p
+    p = p.resolve()
+    if not p.is_file():
+        sys.exit(f"ما لگينا قاعدة التشغيل: {p}")
+    return p
+
+
+def show_path(p):
+    """المسار نسبةً للمشروع إذا داخله، وإلا المسار الكامل (بدال ما يطيح)."""
+    try:
+        return str(Path(p).resolve().relative_to(ROOT))
+    except ValueError:
+        return str(p)
 
 
 def main():
@@ -166,9 +186,8 @@ def main():
     RUNS.mkdir(exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     if args.retry_run:
-        db_path = Path(args.retry_run)
-        if not db_path.is_absolute():
-            db_path = (ROOT / db_path).resolve()
+        db_path = run_db_path(args.retry_run)
+        db.init(db_path)  # قواعد التشغيل القديمة تاخذ الأعمدة والجداول الجديدة بدون تغيير بياناتها
         with db.connect(db_path) as conn:
             batch_id = conn.execute("SELECT MAX(id) FROM batches").fetchone()[0]
     else:
@@ -185,8 +204,11 @@ def main():
     def progress(i, n, cid, status):
         print(f"\r{i}/{n} {status:<6}", end="", flush=True)
 
-    pipeline.process(ids, with_draft=not args.no_drafts, workers=args.workers, on_progress=progress, db_path=db_path)
+    run = pipeline.process(ids, with_draft=not args.no_drafts, workers=args.workers, on_progress=progress,
+                           db_path=db_path)
     print()
+    if run["stopped"]:
+        print(f"الدفعة وقفت: {run['stopped']}" + (f" — الاستئناف بعد {run['resume_after']} (UTC)" if run["resume_after"] else ""))
     with db.connect(db_path) as conn:
         results = db.batch_rows(conn, batch_id)
 
@@ -194,9 +216,12 @@ def main():
     report.update({
         "split": args.split, "dataset": args.dataset, "provider": config.PROVIDER, "model": config.MODEL,
         "prompt_version": config.PROMPT_VERSION, "drafts": not args.no_drafts,
-        "wall_seconds": round(time.time() - t0, 1), "db": str(db_path.relative_to(ROOT)),
+        "wall_seconds": round(time.time() - t0, 1), "db": show_path(db_path),
+        "run": {k: run[k] for k in ("run_id", "done", "failed", "skipped", "not_started", "stopped", "resume_after")},
         "forbidden_in_drafts": sum("draft_forbidden_phrase" in r["review_reasons"] for r in results if r["status"] == "done"),
     })
+    with db.connect(db_path) as conn:
+        report["llm_calls"] = db.usage_summary(conn, run["run_id"])  # كل طلبات HTTP، حتى الفاشلة والإعادات
     if args.sweep:
         report["sweep"] = sweep(results, labels)
     out = RUNS / f"{args.dataset}-{args.split}-{stamp}.json"
@@ -207,7 +232,7 @@ def main():
 
     show = {k: v for k, v in report.items() if k not in ("errors", "confusion", "per_class_f1", "failures")}
     print(json.dumps(show, ensure_ascii=False, indent=2))
-    print(f"\nأخطاء: {len(report['errors'])} — التفاصيل بـ {out.relative_to(ROOT)}")
+    print(f"\nأخطاء: {len(report['errors'])} — التفاصيل بـ {show_path(out)}")
 
 
 if __name__ == "__main__":

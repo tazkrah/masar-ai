@@ -100,13 +100,13 @@ class ProcessTests(unittest.TestCase):
 
         with mock.patch.object(llm, "call", boom):
             s = pipeline.process(ids, db_path=self.path, workers=1)
-        self.assertEqual(s, {"done": 0, "failed": 2})
+        self.assertEqual((s["done"], s["failed"], s["stopped"]), (0, 2, None))  # فشل مؤقت قصير: الدفعة تكمل
 
         with db.connect(self.path) as conn:
             failed = db.batch_ids_to_process(conn, batch, statuses=("failed",))
         with mock.patch.object(llm, "call", fake_call(BASE)):
             s = pipeline.process(failed, db_path=self.path, workers=1)
-        self.assertEqual(s, {"done": 2, "failed": 0})
+        self.assertEqual((s["done"], s["failed"]), (2, 0))
         with db.connect(self.path) as conn:
             rows = db.batch_rows(conn, batch)
             self.assertEqual(conn.execute("SELECT COUNT(*) FROM results").fetchone()[0], 2)

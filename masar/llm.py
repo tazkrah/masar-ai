@@ -7,6 +7,7 @@
 import json
 import os
 import random
+import re
 import time
 from dataclasses import dataclass
 
@@ -14,11 +15,18 @@ from . import config
 
 
 class LLMError(Exception):
-    """فشل نهائي بعد المحاولات. retryable يعني ممكن تنجح إعادة المحاولة لاحقاً."""
+    """فشل نهائي بعد المحاولات. retryable يعني ممكن تنجح إعادة المحاولة لاحقاً.
 
-    def __init__(self, message, retryable):
+    stop_batch: الحد اليومي خلص أو المزوّد طلب انتظار طويل، فما في فايدة نكمل باقي الدفعة.
+    retry_after: الثواني اللي طلبها المزوّد قبل المحاولة الجاية (إذا ذكرها).
+    """
+
+    def __init__(self, message, retryable, stop_batch=False, retry_after=None, limit_kind=None):
         super().__init__(message)
         self.retryable = retryable
+        self.stop_batch = stop_batch
+        self.retry_after = retry_after
+        self.limit_kind = limit_kind
 
 
 @dataclass
@@ -92,20 +100,21 @@ def _anthropic_call(system, user, schema, max_tokens, model, temperature=0):
     except anthropic.NotFoundError as e:
         raise LLMError(f"الموديل {model} مو موجود (404).", retryable=False) from e
     except anthropic.RateLimitError as e:
-        raise _Retry("وصلنا حد الاستخدام (429).", _retry_after(e)) from e
+        raise _Retry("وصلنا حد الاستخدام (429).", _retry_after(e), kind="rate_limited", http_status=429) from e
     except anthropic.BadRequestError as e:
         raise LLMError(f"طلب مرفوض (400): {e.message}", retryable=False) from e
     except anthropic.APIStatusError as e:
         if e.status_code >= 500 or e.status_code == 529:
-            raise _Retry(f"خطأ من الخادم ({e.status_code}).", None) from e
+            raise _Retry(f"خطأ من الخادم ({e.status_code}).", None, kind="server_error", http_status=e.status_code) from e
         raise LLMError(f"خطأ ({e.status_code}): {e.message}", retryable=False) from e
     except (anthropic.APIConnectionError, anthropic.APITimeoutError) as e:
-        raise _Retry("مشكلة اتصال أو انتهى الوقت.", None) from e
+        raise _Retry("مشكلة اتصال أو انتهى الوقت.", None, kind="connection_error") from e
 
     if resp.stop_reason == "refusal":
         raise LLMError("الموديل رفض يعالج الرسالة.", retryable=False)
     if resp.stop_reason == "max_tokens":
-        raise _Retry("الجواب انقطع قبل ما يكمل.", None)
+        raise _Retry("الجواب انقطع قبل ما يكمل.", None, kind="truncated", http_status=200,
+                     input_tokens=resp.usage.input_tokens, output_tokens=resp.usage.output_tokens)
     text = "".join(b.text for b in resp.content if b.type == "text")
     return text, resp.usage.input_tokens, resp.usage.output_tokens
 
@@ -144,7 +153,9 @@ def _openai_compat_call(provider, system, user, schema, max_tokens, model, tempe
         resp = raw.parse()
     except openai.RateLimitError as e:
         _remember_limits(getattr(e.response, "headers", {}))
-        raise _Retry(f"وصلنا حد الاستخدام (429): {_limit_detail(e)}", _retry_after(e)) from e
+        detail = _limit_detail(e)
+        raise _Retry(f"وصلنا حد الاستخدام (429): {detail}", _retry_after(e) or _wait_from_text(detail),
+                     kind="rate_limited", http_status=429, limit_kind=_limit_kind(detail)) from e
     except openai.AuthenticationError as e:
         raise LLMError(f"المفتاح مرفوض (401). تأكد من {KEY_ENV[provider]} بملف .env.", retryable=False) from e
     except openai.PermissionDeniedError as e:
@@ -154,20 +165,23 @@ def _openai_compat_call(provider, system, user, schema, max_tokens, model, tempe
     except openai.BadRequestError as e:
         msg = str(getattr(e, "message", e))
         if "json_validate_failed" in msg or "does not match the expected schema" in msg:
-            raise _Retry("الموديل طلّع JSON ما يطابق المخطط.", None) from e
+            raise _Retry("الموديل طلّع JSON ما يطابق المخطط.", None, kind="schema_rejected", http_status=400) from e
         raise LLMError(f"طلب مرفوض (400): {msg[:300]}", retryable=False) from e
     except openai.APIStatusError as e:
         if e.status_code >= 500:
-            raise _Retry(f"خطأ من الخادم ({e.status_code}).", None) from e
+            raise _Retry(f"خطأ من الخادم ({e.status_code}).", None, kind="server_error", http_status=e.status_code) from e
         raise LLMError(f"خطأ ({e.status_code}).", retryable=False) from e
     except (openai.APIConnectionError, openai.APITimeoutError) as e:
-        raise _Retry("مشكلة اتصال أو انتهى الوقت.", None) from e
+        raise _Retry("مشكلة اتصال أو انتهى الوقت.", None, kind="connection_error") from e
     choice = resp.choices[0]
-    if choice.finish_reason == "length":
-        raise _Retry("الجواب انقطع قبل ما يكمل (حد التوكنات).", None)
-    text = choice.message.content or ""
     u = resp.usage
-    return text, getattr(u, "prompt_tokens", None), getattr(u, "completion_tokens", None)
+    tin, tout = getattr(u, "prompt_tokens", None), getattr(u, "completion_tokens", None)
+    if choice.finish_reason == "length":
+        # الجواب انقطع بس التوكنات انصرفت، فنسجلها
+        raise _Retry("الجواب انقطع قبل ما يكمل (حد التوكنات).", None, kind="truncated", http_status=200,
+                     input_tokens=tin, output_tokens=tout)
+    text = choice.message.content or ""
+    return text, tin, tout
 
 
 def _limit_detail(e):
@@ -175,6 +189,29 @@ def _limit_detail(e):
     msg = str(getattr(e, "message", "") or e)
     i = msg.find(" on ")
     return (msg[i + 4:] if i >= 0 else msg)[:200]
+
+
+def _limit_kind(detail):
+    """أي حد ضربنا حسب نص Groq: tpd/rpd باليوم، tpm/rpm بالدقيقة. None إذا ما واضح."""
+    d = detail.lower()
+    for kind, words in (("tpd", ("tokens per day", "(tpd)")), ("rpd", ("requests per day", "(rpd)")),
+                        ("tpm", ("tokens per minute", "(tpm)")), ("rpm", ("requests per minute", "(rpm)"))):
+        if any(w in d for w in words):
+            return kind
+    return None
+
+
+DAILY_LIMITS = ("tpd", "rpd")
+
+
+def _wait_from_text(detail):
+    """إذا ماكو retry-after بالرد، ناخذ الوقت من نص الرسالة: Please try again in 12m2.3s."""
+    m = re.search(r"try again in ((?:\d+h)?(?:\d+m)?(?:[\d.]+s)?)", detail)
+    if not m or not m.group(1):
+        return None
+    parts = {unit: num for num, unit in re.findall(r"([\d.]+)([hms])", m.group(1))}
+    secs = float(parts.get("h", 0)) * 3600 + float(parts.get("m", 0)) * 60 + float(parts.get("s", 0))
+    return secs or None
 
 
 def _remember_limits(headers):
@@ -188,9 +225,17 @@ def _remember_limits(headers):
 
 
 class _Retry(Exception):
-    def __init__(self, message, retry_after):
+    """خطأ مؤقت يستاهل إعادة. kind والتوكنات للتسجيل (None = المزوّد ما رجّعها، يعني غير معروف)."""
+
+    def __init__(self, message, retry_after, kind="retry", http_status=None, input_tokens=None, output_tokens=None,
+                 limit_kind=None):
         super().__init__(message)
         self.retry_after = retry_after
+        self.kind = kind
+        self.http_status = http_status
+        self.input_tokens = input_tokens
+        self.output_tokens = output_tokens
+        self.limit_kind = limit_kind
 
 
 def _retry_after(e):
@@ -202,11 +247,22 @@ def _retry_after(e):
 
 def call(system, user, schema=None, max_tokens=1024, provider=None, model=None,
          max_attempts=5, base_delay=2.0, max_delay=60.0, sleep=time.sleep, temperature=0,
-         reasoning_effort=None) -> LLMResult:
-    """استدعاء واحد مع إعادة محاولة بفواصل تزيد تدريجياً للأخطاء المؤقتة فقط."""
+         reasoning_effort=None, on_request=None) -> LLMResult:
+    """استدعاء واحد مع إعادة محاولة بفواصل تزيد تدريجياً للأخطاء المؤقتة فقط.
+
+    on_request: دالة تنستدعى بعد كل طلب HTTP (أول طلب وكل إعادة) بسجل فيه النتيجة والتوكنات.
+    التوكنات None إذا المزوّد ما رجّعها (مثلاً رد 429)، يعني غير معروفة مو صفر.
+    """
     provider = provider or config.PROVIDER
     model = model or config.MODEL
     last = None
+
+    def emit(t0, **rec):
+        if on_request:
+            on_request({"request_no": attempt + 1, "input_tokens": None, "output_tokens": None, "http_status": None,
+                        "retry_after": None, "limit_kind": None, "error": None,
+                        "latency_ms": int((time.monotonic() - t0) * 1000), **rec})
+
     for attempt in range(max_attempts):
         t0 = time.monotonic()
         try:
@@ -216,6 +272,8 @@ def call(system, user, schema=None, max_tokens=1024, provider=None, model=None,
                 text, tin, tout = _openai_compat_call(provider, system, user, schema, max_tokens, model, temperature,
                                                       reasoning_effort)
         except _Retry as r:
+            emit(t0, outcome=r.kind, http_status=r.http_status, input_tokens=r.input_tokens,
+                 output_tokens=r.output_tokens, retry_after=r.retry_after, limit_kind=r.limit_kind, error=str(r)[:300])
             last = r
             if attempt == max_attempts - 1:
                 break
@@ -223,22 +281,30 @@ def call(system, user, schema=None, max_tokens=1024, provider=None, model=None,
                 # حد يومي أو انتظار طويل: ما نعلّق البرنامج، نسجل الفشل والموظف يعيد المحاولة بعدين
                 mins = max(1, round(r.retry_after / 60))
                 raise LLMError(f"خلص حد الاستخدام المجاني حالياً. أعد المحاولة بعد {mins} دقيقة تقريباً. ({r})",
-                               retryable=True)
+                               retryable=True, stop_batch=True, retry_after=r.retry_after, limit_kind=r.limit_kind)
             delay = r.retry_after or min(base_delay * 2**attempt + random.uniform(0, 1), max_delay)
             sleep(delay)
             continue
+        except LLMError as e:
+            emit(t0, outcome="error", error=str(e)[:300])
+            raise
         latency = int((time.monotonic() - t0) * 1000)
         data = None
         if schema:
             try:
                 data = json.loads(_strip_fences(text))
             except json.JSONDecodeError:
-                last = _Retry("الموديل رجّع JSON مو صالح.", None)
+                emit(t0, outcome="invalid_json", http_status=200, input_tokens=tin, output_tokens=tout)
+                last = _Retry("الموديل رجّع JSON مو صالح.", None, kind="invalid_json")
                 if attempt == max_attempts - 1:
                     break
                 continue
+        emit(t0, outcome="ok", http_status=200, input_tokens=tin, output_tokens=tout)
         return LLMResult(data, text, tin, tout, latency)
-    raise LLMError(f"فشل بعد {max_attempts} محاولات: {last}", retryable=True)
+    daily = getattr(last, "limit_kind", None) in DAILY_LIMITS
+    raise LLMError(f"فشل بعد {max_attempts} محاولات: {last}", retryable=True, stop_batch=daily,
+                   retry_after=getattr(last, "retry_after", None) if daily else None,
+                   limit_kind=getattr(last, "limit_kind", None))
 
 
 def _strip_fences(text):
