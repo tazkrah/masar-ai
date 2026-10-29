@@ -1,0 +1,118 @@
+{
+  "n": 10,
+  "processed": 10,
+  "failed": 0,
+  "failures": [],
+  "category_accuracy": 1.0,
+  "category_macro_f1": 0.6666666666666666,
+  "per_class_f1": {
+    "transfer_failed": 1.0,
+    "wrong_recipient": 0.0,
+    "account_access": 0.0,
+    "agent_dispute": 1.0,
+    "card": 1.0,
+    "other": 1.0
+  },
+  "category_accuracy_lenient_multi": 1.0,
+  "field_exact": {
+    "transaction_id": 1.0,
+    "amount": 1.0,
+    "date": 1.0
+  },
+  "field_exact_all3": 1.0,
+  "priority_accuracy": 1.0,
+  "department_accuracy_all": 1.0,
+  "auto_routed_share": 0.7,
+  "auto_routed_department_accuracy": 1.0,
+  "review_rate": 0.3,
+  "hard_cases_sent_to_review": "2/2",
+  "review_reasons": {
+    "low_confidence": 1,
+    "unclear_message": 1,
+    "unsupported_date": 1,
+    "multiple_issues": 1
+  },
+  "confusion": {
+    "other": {
+      "other": 3
+    },
+    "card": {
+      "card": 3
+    },
+    "agent_dispute": {
+      "agent_dispute": 2
+    },
+    "transfer_failed": {
+      "transfer_failed": 2
+    }
+  },
+  "threshold": 0.75,
+  "avg_latency_ms": 1591.8,
+  "tokens": {
+    "input": 25667,
+    "output": 2331,
+    "rows_with_unknown_tokens": 0
+  },
+  "est_cost_usd": 0.0,
+  "errors": [],
+  "split": "dev",
+  "dataset": "llm",
+  "provider": "groq",
+  "model": "openai/gpt-oss-120b",
+  "prompt_version": "v2",
+  "drafts": true,
+  "wall_seconds": 70.1,
+  "db": "local.nosync/runs/llm-dev-20261028-185351.db",
+  "run": {
+    "run_id": "09dce381d12641908f5c3039d8c54fa7",
+    "done": 8,
+    "failed": 0,
+    "skipped": 0,
+    "not_started": 0,
+    "stopped": null,
+    "resume_after": null
+  },
+  "forbidden_in_drafts": 0,
+  "llm_calls": [
+    {
+      "stage": "classify",
+      "outcome": "ok",
+      "n": 8,
+      "tin": 14413,
+      "cached": 6144,
+      "tout": 1266,
+      "unknown": 0,
+      "cached_unknown": 4
+    },
+    {
+      "stage": "classify",
+      "outcome": "rate_limited",
+      "n": 5,
+      "tin": null,
+      "cached": null,
+      "tout": null,
+      "unknown": 5,
+      "cached_unknown": 5
+    },
+    {
+      "stage": "draft",
+      "outcome": "ok",
+      "n": 8,
+      "tin": 6202,
+      "cached": null,
+      "tout": 585,
+      "unknown": 0,
+      "cached_unknown": 8
+    },
+    {
+      "stage": "draft",
+      "outcome": "rate_limited",
+      "n": 1,
+      "tin": null,
+      "cached": null,
+      "tout": null,
+      "unknown": 1,
+      "cached_unknown": 1
+    }
+  ]
+}
