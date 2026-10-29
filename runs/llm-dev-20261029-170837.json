@@ -1,0 +1,180 @@
+{
+  "n": 10,
+  "processed": 10,
+  "failed": 0,
+  "failures": [],
+  "category_accuracy": 1.0,
+  "category_macro_f1_present_classes": 1.0,
+  "category_macro_f1_all_classes": 0.6666666666666666,
+  "classes_absent_from_sample": [
+    "wrong_recipient",
+    "account_access"
+  ],
+  "class_coverage_note": "الفئات الغايبة عن العينة (wrong_recipient، account_access) ما إلها أمثلة، فالـ F1 مالتها ما ينقاس. macro-F1 لكل الفئات يحسبها صفر وينزل بدون سبب حقيقي.",
+  "class_coverage": {
+    "transfer_failed": {
+      "gold": 2,
+      "predicted": 2,
+      "f1": 1.0
+    },
+    "wrong_recipient": {
+      "gold": 0,
+      "predicted": 0,
+      "f1": null
+    },
+    "account_access": {
+      "gold": 0,
+      "predicted": 0,
+      "f1": null
+    },
+    "agent_dispute": {
+      "gold": 2,
+      "predicted": 2,
+      "f1": 1.0
+    },
+    "card": {
+      "gold": 3,
+      "predicted": 3,
+      "f1": 1.0
+    },
+    "other": {
+      "gold": 3,
+      "predicted": 3,
+      "f1": 1.0
+    }
+  },
+  "category_accuracy_lenient_multi": 1.0,
+  "field_exact": {
+    "transaction_id": 1.0,
+    "amount": 1.0,
+    "date": 1.0
+  },
+  "field_exact_all3": 1.0,
+  "priority_accuracy": 1.0,
+  "department_accuracy_all": 1.0,
+  "auto_routed_share": 0.6,
+  "auto_routed_department_accuracy": 1.0,
+  "review_rate": 0.4,
+  "hard_cases_sent_to_review": "2/2",
+  "review_reasons": {
+    "low_confidence": 1,
+    "unclear_message": 1,
+    "reason_unsupported": 2,
+    "multiple_issues": 1
+  },
+  "confusion": {
+    "other": {
+      "other": 3
+    },
+    "card": {
+      "card": 3
+    },
+    "agent_dispute": {
+      "agent_dispute": 2
+    },
+    "transfer_failed": {
+      "transfer_failed": 2
+    }
+  },
+  "threshold": 0.75,
+  "avg_latency_ms": 1810.7,
+  "tokens": {
+    "input": 33979,
+    "output": 2516,
+    "rows_with_unknown_tokens": 0
+  },
+  "est_cost_usd": 0.0,
+  "raw_vs_guarded": {
+    "rows_with_raw": 10,
+    "rows_without_raw": 0,
+    "guard_review_reasons": {
+      "reason_unsupported": 2
+    },
+    "field_exact": {
+      "raw": {
+        "transaction_id": 1.0,
+        "amount": 1.0,
+        "date": 1.0
+      },
+      "guarded": {
+        "transaction_id": 1.0,
+        "amount": 1.0,
+        "date": 1.0
+      }
+    },
+    "fields_changed_by_guard": {
+      "transaction_id": 0,
+      "amount": 0,
+      "date": 0
+    },
+    "review_rate": {
+      "raw": 0.2,
+      "guarded": 0.4
+    },
+    "hard_cases_sent_to_review": {
+      "raw": "2/2",
+      "guarded": "2/2"
+    }
+  },
+  "errors": [],
+  "split": "dev",
+  "dataset": "llm",
+  "provider": "groq",
+  "model": "openai/gpt-oss-120b",
+  "prompt_version": "v3",
+  "drafts": true,
+  "wall_seconds": 137.0,
+  "db": "local.nosync/runs/llm-dev-20261029-170837.db",
+  "run": {
+    "run_id": "b2ef00051cde4c959691e5079dcb7455",
+    "done": 10,
+    "failed": 0,
+    "skipped": 0,
+    "not_started": 0,
+    "stopped": null,
+    "resume_after": null
+  },
+  "forbidden_in_drafts": 0,
+  "llm_calls": [
+    {
+      "stage": "classify",
+      "outcome": "ok",
+      "n": 10,
+      "tin": 18680,
+      "cached": 8192,
+      "tout": 1661,
+      "unknown": 0,
+      "cached_unknown": 5
+    },
+    {
+      "stage": "classify",
+      "outcome": "rate_limited",
+      "n": 9,
+      "tin": null,
+      "cached": null,
+      "tout": null,
+      "unknown": 9,
+      "cached_unknown": 9
+    },
+    {
+      "stage": "draft",
+      "outcome": "ok",
+      "n": 10,
+      "tin": 15299,
+      "cached": 3072,
+      "tout": 855,
+      "unknown": 0,
+      "cached_unknown": 4
+    },
+    {
+      "stage": "draft",
+      "outcome": "rate_limited",
+      "n": 5,
+      "tin": null,
+      "cached": null,
+      "tout": null,
+      "unknown": 5,
+      "cached_unknown": 5
+    }
+  ]
+}
