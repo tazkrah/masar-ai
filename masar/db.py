@@ -334,7 +334,8 @@ def save_review(conn, complaint_id, decision, final_draft, corrected_category=No
     if decision == "approved":
         from . import pipeline  # هنا حتى ما يصير استيراد دائري
 
-        blockers = pipeline.approval_blockers(final_draft)
+        row = conn.execute("SELECT message FROM complaints WHERE id = ?", (complaint_id,)).fetchone()
+        blockers = pipeline.approval_blockers(final_draft, row[0] if row else None)
         if not (final_draft or "").strip():
             blockers = ["المسودة فارغة"] + blockers
         if blockers:

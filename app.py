@@ -616,7 +616,7 @@ def footer():
 
     if approve:
         text = current(r)["draft"]
-        found = pipeline.approval_blockers(text)
+        found = pipeline.approval_blockers(text, r["message"])
         if not text.strip():
             ss[f"err_{cid}"] = "المسودة فارغة."
         elif found:

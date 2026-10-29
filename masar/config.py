@@ -32,7 +32,8 @@ MAX_RATE_LIMIT_WAIT = float(os.getenv("MASAR_MAX_RATE_LIMIT_WAIT", "90"))
 MAX_TOKENS_CLASSIFY = 1000
 MAX_TOKENS_DRAFT = 800
 CONFIDENCE_THRESHOLD = float(os.getenv("MASAR_CONFIDENCE_THRESHOLD", "0.75"))
-PROMPT_VERSION = "v3"  # v3: السبب مسنود بالرسالة، والمسودة ما تدّعي إجراء ولا تطلب معلومات بلا حاجة
+PROMPT_VERSION = "v4"  # v4: دليل وتعليمات مسودة أقصر، وحذف مثال التبرير اللي يتنسخ
+# v3: السبب مسنود بالرسالة، والمسودة ما تدّعي إجراء ولا تطلب معلومات بلا حاجة
 # v2: الأسئلة حسب موضوعها، وتاريخ الاستلام مو تاريخ المشكلة
 
 MAX_MESSAGE_CHARS = 2000
@@ -91,7 +92,7 @@ REVIEW_REASON_LABELS = {
     "draft_forbidden_phrase": "المسودة بيها وعد أو عبارة ممنوعة",
     "message_too_long": "الرسالة طويلة وانقطعت",
     "reason_unsupported": "تبرير الموديل بيه تفصيل مو مذكور بالرسالة",
-    "draft_unsupported_action": "المسودة تدّعي إجراء ما انعمل (إيقاف، رفع طلب، مراجعة)",
+    "draft_unsupported_action": "المسودة توعد بإحالة أو متابعة أو رد، أو تدّعي إجراء ما انعمل",
     "draft_sensitive_request": "المسودة تطلب معلومة حساسة أو ما إلها حاجة",
     "draft_irrelevant_request": "المسودة تطلب معلومة ما تناسب الحالة",
     "draft_missing_issue": "الرسالة بيها أكثر من مشكلة والمسودة ما ذكرت الثانية",

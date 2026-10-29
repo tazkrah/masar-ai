@@ -50,10 +50,15 @@ class ReasonGroundingTests(unittest.TestCase):
         self.assertIn("خصم", pipeline.reason_unsupported("طلب بطاقة وما وصلت رغم خصم المبلغ.", msg))
         self.assertEqual(pipeline.reason_unsupported("طلب بطاقة ويگول دافع وبعدها ما وصلت.", msg), [])
 
-    def test_copied_example_reason(self):
-        ex_reason = prompts.FEW_SHOT[0][2]["reason"]
-        msg = "عندي حوالة بالأمس، رقمها 77881234، ممكن تشوفوها"
-        self.assertIn("منسوخ من مثال", pipeline.reason_unsupported(ex_reason, msg))
+    def test_matching_example_is_not_an_error_by_itself(self):
+        """التطابق ويا مثال مو خطأ؛ الخطأ هو المعلومة غير المسندة."""
+        ex_reason = prompts.FEW_SHOT[-1][2]["reason"]
+        self.assertEqual(pipeline.reason_unsupported(ex_reason, "شنو هالشغل والله"), [])
+        self.assertIn("خصم", pipeline.reason_unsupported("انخصم المبلغ من رصيد المرسل والمستلم يگول ما وصله.",
+                                                          "عندي حوالة بالأمس، ممكن تشوفوها"))
+
+    def test_copied_transfer_example_removed(self):
+        self.assertFalse(any("انخصم" in out["reason"] for _, _, out in prompts.FEW_SHOT))
 
     def test_numbers_not_in_message(self):
         self.assertTrue(pipeline.reason_unsupported("حوّل 300 ألف وما وصلت.", "حولت فلوس وما وصلت"))
@@ -68,22 +73,61 @@ class ReasonGroundingTests(unittest.TestCase):
 
 
 class DraftActionTests(unittest.TestCase):
+    # المسودات الخمسة من تجربة v3 (2026-10-29) اللي عبرت من الحماية، بنصها
+    MISSED_V3 = [
+        "شكراً لتواصلك، استلمنا شكواك بخصوص المشكلة المتكررة في حسابك. الحالة تحتاج متابعة من الموظف المختص لتوضيح السبب وإيجاد حل. بنبلغ الفريق المختص بالموضوع. نتمنى لك يومًا طيبًا.",
+        "وصلتنا شكواك بخصوص تجديد البطاقة المنتهية. سؤالك يحتاج مراجعة من الموظف المختص لتحديد الإجراء المناسب. حنوافيك بالرد بأقرب وقت.",
+        "وصلنا شكواك بخصوص فقدان بطاقتك بتاريخ 2026-10-07. الحالة تحتاج متابعة عاجلة من الموظف المختص. حنواكّد إن طلبك وصلنا وسنقوم بمتابعة الموضوع.",
+        "شكرًا على تواصلك، استلمنا شكواك بخصوص توقف التطبيق بعد التحديث. الحالة تحتاج مراجعة من الموظف المختص. بنوافيك بأقرب وقت ممكن.",
+        "شكرًا على اقتراحك وإرسالكم الرسالة. طلبكم بإضافة خاصية دفع الفواتير تم استلامه وسيتطلب مراجعة من الموظف المختص. نقدر اهتمامكم وسنقوم بنقل ملاحظتكم للجهة المعنية. نتمنى لكم تجربة مريحة مع التطبيق.",
+    ]
+
+    def test_v3_missed_promises_now_caught(self):
+        for d in self.MISSED_V3:
+            self.assertTrue(pipeline.promises_in_draft(d), d)
+            self.assertTrue(any(b.startswith("وعد") for b in pipeline.approval_blockers(d)), d)
+            self.assertIn("draft_unsupported_action", pipeline.draft_review_reasons(d, "رسالة", None, "other"), d)
+
+    def test_new_phrasings_of_same_promises(self):
+        for d in ("راح نوافيك بالتفاصيل.", "بنتواصل وياك قريباً.", "حنرفع طلبك للقسم.", "سنعمل على حل المشكلة.",
+                  "الفريق بيتابع الموضوع.", "سيتواصل معك أحد الموظفين.", "رح نرجع إلك بخبر.", "نوافيك بالنتيجة.",
+                  "الموظف حيراجع طلبك.", "ستتم متابعة الحالة.", "راح يتم التواصل وياك.", "بنشوف الموضوع ونرد عليك.",
+                  "سوف نقوم بإبلاغ القسم.", "يتواصل وياك الموظف المختص.", "حنحاول نحلها خلال يومين."):
+            self.assertTrue(pipeline.promises_in_draft(d), d)
+
     def test_claimed_actions_flagged(self):
-        for d in ("تم إيقاف بطاقتك بنجاح.", "رفعنا طلب إيقاف للبطاقة.", "تمت مراجعة العملية وراح نبلغك.",
-                  "تواصلنا ويا الوكيل بخصوص المبلغ."):
-            self.assertTrue(pipeline.unsupported_actions_in_draft(d), d)
+        for d in ("تم إيقاف بطاقتك بنجاح.", "رفعنا طلب إيقاف للبطاقة.", "تمت مراجعة العملية.",
+                  "تواصلنا ويا الوكيل بخصوص المبلغ.", "حظرنا البطاقة احتياطاً."):
+            self.assertTrue(pipeline.promises_in_draft(d), d)
 
     def test_referral_claims_flagged(self):
-        """تحديد القسم داخل مسار مو إحالة فعلية: ما نگول وصل لقسم أو الموظف راح يراجعه."""
+        """تحديد القسم داخل مسار مو إحالة فعلية."""
         for d in ("وصل طلبك لقسم البطاقات كحالة مستعجلة.", "الموظف المختص راح يراجعه.",
                   "شكواك تحولت للقسم المختص.", "فريقنا راح يتابع الموضوع.", "سيتم التواصل معك.",
                   "الطلب انرسل إلى قسم البطاقات.", "القسم المختص رح يراجع الحالة."):
-            self.assertTrue(pipeline.unsupported_actions_in_draft(d), d)
+            self.assertTrue(pipeline.promises_in_draft(d), d)
 
     def test_honest_wording_ok(self):
         for d in ("وصلنا طلبك بخصوص البطاقة المفقودة. الحالة تحتاج متابعة عاجلة من الموظف المختص.",
-                  "وصلتنا شكوى التحويل، والحالة تحتاج متابعة من الموظف المختص. لا تعيد نفس التحويل."):
-            self.assertEqual(pipeline.unsupported_actions_in_draft(d), [], d)
+                  "وصلتنا شكوى التحويل، والحالة تحتاج متابعة من الموظف المختص. لا تعيد نفس التحويل.",
+                  "تم استلام شكواك بخصوص الإيداع. ممكن تزودنا بالمبلغ والتاريخ؟",
+                  # بادئات بلا فعل وعد: بنفس، بنك، سنة، بناءً، بيانات
+                  "بنفس الوقت، لا تشارك الرمز ويا أحد.", "إذا البطاقة من بنك ثاني، اذكر اسمه.",
+                  "بناءً على رسالتك، الحالة تحتاج متابعة من الموظف المختص.", "صارلك سنة ويانا، شكراً لثقتك.",
+                  # نفي
+                  "ما راح نتواصل وياك نطلب أي رمز، فلا تعطيه لأحد.", "ما نگدر نحدد وقت، والحالة تحتاج متابعة.",
+                  "لا تتواصل ويا أي أحد يطلب منك الرمز."):
+            self.assertEqual(pipeline.promises_in_draft(d), [], d)
+            self.assertEqual(pipeline.approval_blockers(d), [], d)
+
+    def test_quoted_customer_words_ok(self):
+        msg = "الوكيل گال بنتابع وياك بس لحد الآن ما صار شي، أريد الرد بأسرع وقت"
+        for d in ("ذكرت إن الوكيل گال لك «بنحوّلها بعد ساعة». الحالة تحتاج متابعة من الموظف المختص.",
+                  "ذكرت إن الوكيل گال بنتابع وياك. الحالة تحتاج متابعة من الموظف المختص.",
+                  "نفهم إنك تريد الرد بأسرع وقت، والحالة تحتاج متابعة عاجلة من الموظف المختص."):
+            self.assertEqual(pipeline.promises_in_draft(d, msg), [], d)
+        # نفس الوعد بدون ما يكون من كلام الزبون ينمسك
+        self.assertTrue(pipeline.promises_in_draft("بنتابع وياك بأسرع وقت.", "الوكيل ما سلّمني المبلغ"))
 
     def test_lost_card_claim_goes_to_review(self):
         msg = "انسرقت محفظتي وبيها البطاقة، وقفوها رجاءً"
@@ -149,26 +193,26 @@ class DraftPromptTests(unittest.TestCase):
     def test_system_facts_and_rules_in_prompt(self):
         system, user = prompts.draft_prompts("شلون أجدد الكرت؟", "card", {"transaction_id": None, "amount": None,
                                                                          "date": None}, [])
-        self.assertIn("ما انعمل أي إجراء", system)
-        self.assertIn("ما انوقفت بطاقة", system)
-        self.assertIn("الدليل ما يجاوبه", system)
-        self.assertIn("رقم الجهاز", system)
-        self.assertIn("ما يرسل الطلب لأي قسم أو موظف", system)
+        for rule in ("ما يرسلها لأحد", "ما ينفذ أي إجراء", "ما يوعد بإحالة أو متابعة أو رد", "متابعة (أو متابعة عاجلة) من الموظف المختص",
+                     "ما نفترض ميزة بالتطبيق", "يحتاج مراجعة من الموظف المختص", "رقم الجهاز", "نذكرها كلها", "مو فصحى"):
+            self.assertIn(rule, system)
         self.assertNotIn("القسم المختص:", user)  # اسم القسم ما يوصل للمسودة حتى ما تدّعي إحالة
-        for p in ("تم إيقاف", "رفعنا طلب"):
-            self.assertIn(p, system)
+        for rule in ("ما يرسلها لأحد", "مو فصحى"):  # بدون تكرار بين الدليل وتعليمات المسودة
+            self.assertEqual(system.count(rule), 1, rule)
+
+    def test_prompt_shorter_than_v3(self):
+        system, _ = prompts.draft_prompts("ضاعت بطاقتي", "card", {"transaction_id": None, "amount": None, "date": None}, [])
+        self.assertLess(len(system), 2600)  # v3 كانت 4,190 حرف لنفس الحالة، v4 حوالي 2,230
 
     def test_guide_rules(self):
         guide = prompts.load_guide()
-        self.assertIn("تم إيقاف", prompts.unsupported_actions(guide))
         _, card = prompts.guide_section("card", guide)
         self.assertIn("رقم الطلب", card)
         self.assertIn("متابعة عاجلة من الموظف المختص", card)
         self.assertNotIn("وصل لقسم البطاقات", guide)
-        self.assertIn("تجديد", card)
+        self.assertIn("التجديد", card)
         self.assertNotIn("يوقف البطاقة من التطبيق", card)  # ما نفترض ميزة بالتطبيق
-        general, _ = prompts.guide_section("other", guide)
-        self.assertIn("ما ندّعي", general)
+        self.assertNotIn("unsupported-actions", guide)  # قواعد الوعود بالكود بمكان واحد
 
     def test_long_draft_flagged(self):
         self.assertIn("draft_too_long",
@@ -217,6 +261,21 @@ class ApprovalTests(unittest.TestCase):
             self.approve(good + " تم إيقاف البطاقة.")
         self.assertEqual(self.decision(), ("approved", good))
 
+    def test_removing_promise_allows_approval(self):
+        with_promise = ("وصلنا شكواك بخصوص فقدان بطاقتك. الحالة تحتاج متابعة عاجلة من الموظف المختص. "
+                        "حنواكّد إن طلبك وصلنا وسنقوم بمتابعة الموضوع.")
+        with self.assertRaises(self.db.DraftBlocked) as ctx:
+            self.approve(with_promise)
+        self.assertTrue(any("سنقوم" in b for b in ctx.exception.blockers))
+        edited = "وصلنا شكواك بخصوص فقدان بطاقتك. الحالة تحتاج متابعة عاجلة من الموظف المختص."
+        self.approve(edited)
+        self.assertEqual(self.decision(), ("approved", edited))
+
+    def test_approval_uses_message_for_quotes(self):
+        """كلام الزبون المنقول بالمسودة ما يمنع الاعتماد (الرسالة: «ضاعت بطاقتي اليوم»)."""
+        self.approve("ذكرت إن بطاقتك ضاعت اليوم. الحالة تحتاج متابعة عاجلة من الموظف المختص.")
+        self.assertEqual(self.decision()[0], "approved")
+
     def test_followup_allowed_with_bad_draft(self):
         with self.db.connect(self.path) as conn:
             self.db.save_review(conn, self.cid, "needs_followup", "تم إيقاف بطاقتك.")
@@ -228,7 +287,7 @@ class ApprovalTests(unittest.TestCase):
             conn.execute("UPDATE results SET status='done', category='card' WHERE complaint_id = ?", (self.cid,))
         with mock.patch.object(llm, "call", lambda *a, **k: llm.LLMResult(None, "تم حظر البطاقة وراح نتابع.", 1, 1, 1)):
             draft, found = pipeline.regenerate_draft(self.cid, db_path=self.path)
-        self.assertTrue(any("ادعاء إجراء" in f for f in found))
+        self.assertTrue(any(f.startswith("وعد") for f in found))
         with mock.patch.object(llm, "call", lambda *a, **k: llm.LLMResult(
                 None, "وصلنا طلبك بخصوص البطاقة المفقودة. الحالة تحتاج متابعة عاجلة من الموظف المختص.", 1, 1, 1)):
             _, found = pipeline.regenerate_draft(self.cid, db_path=self.path)

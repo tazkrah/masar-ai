@@ -118,20 +118,62 @@ def check_draft(draft: str):
     return found
 
 
-# ادعاء إحالة: فعل وصول/تحويل/إرسال، وبعده بكلمتين أو أقل قسم أو موظف أو فريق ("وصل طلبك لقسم البطاقات")
-_REFERRAL_RE = re.compile(
-    r"(?:وصل|وصلت|تحول|تحوّل|تحولت|تحوّلت|انحول|انحوّل|انرسل|انرسلت|انحال|انحالت|حولنا|حوّلنا|رفعنا|ارسلنا|أرسلنا|دزينا)"
-    r"\s+(?:\S+\s+){0,2}?(?:لل|ل|الى\s+|إلى\s+)(?:قسم|القسم|موظف|الموظف|فريق|الفريق|الجهة)")
-# ادعاء متابعة: موظف أو قسم أو فريق "راح" يسوي شي
-_FOLLOWUP_RE = re.compile(r"(?:الموظف|موظف|القسم|قسم|الفريق|فريق|فريقنا)\S*\s+(?:\S+\s+){0,3}?(?:راح|رح|سوف|سـ)\s*\S+")
+# --- وعود وادعاءات إجراء: نفس القواعد لفحص المسودة ولفحص الاعتماد ---
+# أفعال الإجراء والإحالة والمتابعة والرد. بادئة المستقبل لحالها (ب، ح، س) ما تكفي: لازم يجي بعدها فعل من هالقائمة،
+# فكلمات مثل «بنفس» و«بنك» و«سنة» ما تنحسب.
+_ACT = (r"(?:قوم|تابع|راجع|بلغ|بلّغ|وافي|رد|رجع|تواصل|تصل|اتصل|نقل|حول|حوّل|رفع|رسل|ارسل|أرسل|دز|خبر|طمن|"
+        r"عالج|حل|حاول|وقف|اوقف|أوقف|شوف|تحقق|فحص|عمل\s+على|هتم|اهتم|نظر|ساعد|أكد|اكد|واكد)")
+_PROMISE_RES = [
+    # وعد بالمستقبل من طرفنا: سنقوم، حنوافيك، بنبلغ الفريق، راح نتابع
+    re.compile(rf"(?<!\w)[وف]?(?:(?:راح|رح|سوف|ح)\s+|[سحب])ن{_ACT}"),
+    # وعد عن الموظف أو القسم أو النظام: سيتواصل، بيتابعها، راح يراجع، سيتم
+    re.compile(rf"(?<!\w)[وف]?(?:(?:راح|رح|سوف|ح)\s+|[سحب])ي{_ACT}"),
+    re.compile(r"(?<!\w)[وف]?(?:(?:راح|رح|سوف)\s+|[سحب])[يت]تم(?!\w)"),
+    # وعد بلا أداة مستقبل: نوافيك، نتواصل وياك، يتواصل معك
+    re.compile(r"(?<!\w)[وف]?ن(?:وافي|رجعل|بلغ|خبر|طمن)(?:ك|كم)(?!\w)"),
+    re.compile(r"(?<!\w)[وف]?[نيت](?:تواصل|تصل)\s+(?:وياك|معك|بيك|وياكم|معكم|بيكم)"),
+    # وعد بوقت
+    re.compile(r"ب(?:أ|ا)(?:قرب|سرع)\s+وقت|(?<!\w)[وف]?قريباً?(?!\w)|بالقريب العاجل|خلال\s+\S+\s+(?:ساعة|ساعات|يوم|أيام|ايام)"),
+    # إحالة: وصل طلبك لقسم البطاقات، تحولت للقسم، انرسل إلى الموظف
+    re.compile(r"(?:وصل|وصلت|تحول|تحوّل|تحولت|تحوّلت|انحول|انحوّل|انرسل|انرسلت|انحال|انحالت)"
+               r"\s+(?:\S+\s+){0,2}?(?:لل|ل|الى\s+|إلى\s+)(?:قسم|القسم|موظف|الموظف|فريق|الفريق|الجهة)"),
+    # ادعاء إجراء صار: تم إيقاف، تمت مراجعة، حظرنا، تواصلنا
+    re.compile(r"(?<!\w)[وف]?تم\s+(?:إيقاف|ايقاف|حظر|تجميد|إلغاء|الغاء|رفع|إرسال|ارسال|مراجعة|فحص|التواصل|إبلاغ|ابلاغ|"
+               r"تحويل\s+(?:طلبك|شكواك|الطلب|الشكوى))"),
+    re.compile(r"(?<!\w)[وف]?تمت\s+(?:مراجعة|متابعة|إحالة|احالة)"),
+    re.compile(r"(?<!\w)[وف]?(?:وقفنا|أوقفنا|اوقفنا|حظرنا|جمدنا|رفعنا|راجعنا|تابعنا|تواصلنا|اتصلنا|حولنا|حوّلنا|أرسلنا|ارسلنا|"
+               r"دزينا|بلّغنا|فحصنا|نقلنا)(?!\w)"),
+]
+_QUOTE_RE = re.compile(r"«[^»]*»|\"[^\"]*\"|“[^”]*”")
+_PROMISE_NEG = re.compile(r"(?:^|\s)(?:ما|لا|مو|ماكو|ماراح|بدون|دون|لن|ولا)\s+(?:\S+\s+)?$")
 
 
-def unsupported_actions_in_draft(draft: str):
-    """عبارات تدّعي إجراء ما سوّاه النظام: إيقاف بطاقة، رفع طلب، مراجعة عملية، إحالة لقسم أو متابعة موظف."""
-    draft = draft or ""
-    found = [p for p in prompts.unsupported_actions() if p in draft]
-    found += [m.group(0) for m in _REFERRAL_RE.finditer(draft)]
-    found += [m.group(0) for m in _FOLLOWUP_RE.finditer(draft)]
+_TASHKEEL = re.compile(r"[\u064B-\u0652\u0670\u0640]")  # حركات وشدة وتطويل
+
+
+def _spaces(text):
+    return re.sub(r"\s+", " ", _TASHKEEL.sub("", text or "")).strip()
+
+
+def promises_in_draft(draft: str, message: str | None = None):
+    """وعود بإحالة أو متابعة أو رد، أو ادعاء إجراء ما صار. يرجع العبارات اللي انمسكت.
+
+    ما ينحسب: الكلام المنفي ("ما راح نتواصل وياك نطلب رمز")، والمقتبس بين علامات تنصيص،
+    والعبارة إذا هي نفسها مكتوبة برسالة الزبون (المسودة تنقل كلامه).
+    """
+    text = _QUOTE_RE.sub(lambda m: " " * len(m.group(0)), _TASHKEEL.sub("", draft or ""))
+    msg = _spaces(message)
+    found = []
+    for rx in _PROMISE_RES:
+        for m in rx.finditer(text):
+            sentence_start = max(text.rfind(c, 0, m.start()) for c in ".!؟?\n") + 1
+            if _PROMISE_NEG.search(text[sentence_start: m.start()]):
+                continue
+            hit = m.group(0).strip()
+            if msg and _spaces(hit) in msg:
+                continue
+            if hit not in found:
+                found.append(hit)
     return found
 
 
@@ -191,26 +233,29 @@ _REASON_CLAIMS = {
 
 
 def reason_unsupported(reason: str, message: str):
-    """تفاصيل بالتبرير مو مذكورة بالرسالة: أرقام، أو سبب منسوخ من الأمثلة، أو ادعاء بلا أصل."""
+    """تفاصيل بالتبرير مو مذكورة بالرسالة: أرقام، أو ادعاء (خصم، نجاح، سرقة...) بلا أصل بالرسالة.
+
+    تشابه التبرير ويا مثال مو خطأ بحد ذاته؛ الخطأ هو المعلومة غير المسندة.
+    """
     reason, msg = (reason or "").translate(ARABIC_DIGITS), (message or "").translate(ARABIC_DIGITS)
     found = []
     msg_nums = set(re.findall(r"\d+", re.sub(r"[,،٬]", "", msg)))
     for n in re.findall(r"\d+", re.sub(r"[,،٬]", "", reason)):
         if n not in msg_nums:
             found.append(f"رقم: {n}")
-    for ex_msg, ex in ((m, o) for _, m, o in prompts.FEW_SHOT):
-        if ex["reason"].strip() == reason.strip() and ex_msg != message:
-            found.append("منسوخ من مثال")
     for claim, roots in _REASON_CLAIMS.items():
         if claim in reason and not any(r in msg for r in roots):
             found.append(claim)
     return found
 
 
-def approval_blockers(draft: str) -> list[str]:
-    """أسباب تمنع اعتماد المسودة (الأصلية أو المعدّلة أو المعاد كتابتها): عبارة ممنوعة، ادعاء إجراء، طلب معلومة حساسة."""
+def approval_blockers(draft: str, message: str | None = None) -> list[str]:
+    """أسباب تمنع اعتماد المسودة (الأصلية أو المعدّلة أو المعاد كتابتها): عبارة ممنوعة، وعد أو ادعاء إجراء، طلب معلومة حساسة.
+
+    نفس القواعد اللي يستخدمها فحص المسودة بعد المودل (draft_review_reasons).
+    """
     out = [f"عبارة ممنوعة: {p}" for p in check_draft(draft or "")]
-    out += [f"ادعاء إجراء ما صار: {p}" for p in unsupported_actions_in_draft(draft)]
+    out += [f"وعد أو ادعاء إجراء: {p}" for p in promises_in_draft(draft, message)]
     out += [f"طلب معلومة حساسة: {s}" for s in sensitive_requests(draft)]
     return out
 
@@ -220,7 +265,7 @@ def draft_review_reasons(draft, message, date_field, category, secondary_categor
     checks = [
         ("draft_forbidden_phrase", check_draft(draft)),
         ("draft_unsupported_date", draft_unsupported_dates(draft, message, date_field)),
-        ("draft_unsupported_action", unsupported_actions_in_draft(draft)),
+        ("draft_unsupported_action", promises_in_draft(draft, message)),
         ("draft_sensitive_request", sensitive_requests(draft)),
         ("draft_irrelevant_request", irrelevant_requests(draft, message)),
         ("draft_missing_issue", draft_missing_issue(draft, secondary_category, category)),
@@ -426,4 +471,4 @@ def regenerate_draft(complaint_id, db_path=None):
             db.log_calls(conn, [{**c, "complaint_id": complaint_id, "provider": config.PROVIDER, "model": config.MODEL}
                                 for c in calls])
     draft = format_amounts_in_draft(res.text.strip(), r["amount"])
-    return draft, approval_blockers(draft)
+    return draft, approval_blockers(draft, c["message"])
