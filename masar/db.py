@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS reviews (
 );
 """
 
-JSON_COLUMNS = ("model_flags", "review_reasons", "missing_fields")
+JSON_COLUMNS = ("model_flags", "review_reasons", "missing_fields", "raw_output")
 
 
 def now() -> str:
@@ -134,7 +134,8 @@ def connect(path=None):
 
 
 # أعمدة انضافت بعد أول نسخة. القواعد القديمة تنحدّث بإضافتها فقط، بدون ما نغيّر أي سطر موجود.
-MIGRATIONS = {"results": [("run_id", "TEXT"), ("run_started_at", "TEXT")],
+MIGRATIONS = {"results": [("run_id", "TEXT"), ("run_started_at", "TEXT"), ("secondary_category", "TEXT"),
+                          ("raw_output", "TEXT")],  # raw_output: جواب الفهم الخام من الموديل قبل الحماية (JSON)
               "llm_calls": [("cached_tokens", "INTEGER"), ("rate_headers", "TEXT"), ("usage_raw", "TEXT")]}
 
 
@@ -320,7 +321,24 @@ def batch_rows(conn, batch_id):
     return [_row(r) for r in rows]
 
 
+class DraftBlocked(ValueError):
+    """الاعتماد انرفض لأن المسودة بيها شي ممنوع. blockers: الأسباب."""
+
+    def __init__(self, blockers):
+        super().__init__("؛ ".join(blockers))
+        self.blockers = blockers
+
+
 def save_review(conn, complaint_id, decision, final_draft, corrected_category=None, note=None):
+    """يحفظ قرار الموظف. الاعتماد يرفض (DraftBlocked) إذا النص النهائي بيه عبارة ممنوعة أو ادعاء إجراء أو طلب حساس."""
+    if decision == "approved":
+        from . import pipeline  # هنا حتى ما يصير استيراد دائري
+
+        blockers = pipeline.approval_blockers(final_draft)
+        if not (final_draft or "").strip():
+            blockers = ["المسودة فارغة"] + blockers
+        if blockers:
+            raise DraftBlocked(blockers)
     conn.execute(
         "INSERT INTO reviews (complaint_id, decision, final_draft, corrected_category, note, reviewed_at) "
         "VALUES (?,?,?,?,?,?) ON CONFLICT(complaint_id) DO UPDATE SET decision=excluded.decision, "

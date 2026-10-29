@@ -60,6 +60,8 @@ true إذا اكو احتمال احتيال أو خطر على الحساب أ�
 - reason: جملة وحدة قصيرة بلهجة بيضاء توضح ليش اخترت الفئة، مبنية على كلام الزبون فقط.
   لا تضيف أي تفصيل أو استنتاج مو مكتوب بالرسالة. مثلاً: خصم المبلغ من الرصيد مو معناه إن التحويل نجح؛
   إذا الزبون ما گال "طلعت ناجحة" لا تكتبها. ولا تذكر أرقام أو مبالغ بالسبب.
+  إذا الزبون ما ذكر خصم، لا تگول انخصم. إذا تعبيره مبهم، انقله مثل ما هو أو گول إنه مو واضح، ولا تحوّله لحقيقة مؤكدة.
+  اكتب السبب حسب هالرسالة بالذات، ولا تنسخ سبب من الأمثلة.
 """
 
 FEW_SHOT = [
@@ -124,6 +126,13 @@ def forbidden_phrases(guide=None):
     return [l.strip()[2:].strip() for l in m.group(1).splitlines() if l.strip().startswith("- ")]
 
 
+def unsupported_actions(guide=None):
+    """عبارات تدّعي إجراء ما انعمل (من الدليل)."""
+    guide = guide or load_guide()
+    m = re.search(r"<!-- unsupported-actions:start -->(.*?)<!-- unsupported-actions:end -->", guide, re.S)
+    return [l.strip()[2:].strip() for l in m.group(1).splitlines() if l.strip().startswith("- ")]
+
+
 def guide_section(category, guide=None):
     guide = guide or load_guide()
     general = guide.split("## العبارات الممنوعة")[0]
@@ -140,6 +149,19 @@ DRAFT_SYSTEM = """أنت تكتب مسودة رد على شكوى زبون في 
 {section}
 
 عبارات ممنوعة لا تكتبها أبداً: {forbidden}
+ولا تكتب أي عبارة تدّعي إجراء، مثل: {actions}
+
+## شنو صار فعلياً بالنظام
+الشكوى انحفظت بمسار بس. مسار يحدد القسم داخلياً، بس ما يرسل الطلب لأي قسم أو موظف، وما عدنا متابعة مضمونة.
+ما انعمل أي إجراء: ما انوقفت بطاقة، وما انفحصت عملية، وما انرفع أو انرسل أي طلب.
+فلا تگول إن شي انعمل، ولا إن الطلب وصل لقسم أو انحوّل، ولا إن موظف أو فريق راح يراجعه أو يتابعه أو يتواصل.
+تگدر تگول إن الشكوى وصلتنا وإن الحالة تحتاج متابعة (أو متابعة عاجلة) من الموظف المختص.
+
+## قواعد الرد
+- من 2 إلى 4 جمل، بلهجة بيضاء، بدون وعود أو تأكيدات ما إلها سند بالرسالة أو بالدليل.
+- إذا الزبون يسأل سؤال الدليل ما يجاوبه، لا تكتب خطوات من عندك. وضّح إن سؤاله يحتاج مراجعة من الموظف المختص.
+- اطلب بس المعلومات الناقصة المذكورة تحت، أو اللي الدليل يطلبها لهاي الحالة بالذات. لا تطلب رقم الجهاز أو معلومات حساسة.
+- إذا مذكور أكثر من مشكلة، اذكرها كلها بالرد ووضّح إنها تحتاج مراجعة من الموظف المختص.
 
 إذا ذكرت المبلغ، اكتبه بالضبط مثل ما مكتوب بالتفاصيل المستخرجة (مثلاً: 75,000 دينار عراقي).
 
@@ -147,15 +169,22 @@ DRAFT_SYSTEM = """أنت تكتب مسودة رد على شكوى زبون في 
 اكتب الرد فقط، بدون مقدمة أو شرح أو علامات تنسيق."""
 
 
-def draft_prompts(message, category, fields, missing):
-    general, section = guide_section(category)
-    system = DRAFT_SYSTEM.format(general=general, section=section, forbidden="، ".join(forbidden_phrases()))
+def draft_prompts(message, category, fields, missing, secondary_category=None):
+    guide = load_guide()
+    general, section = guide_section(category, guide)
+    if secondary_category and secondary_category != category:
+        section += "\n\n" + guide_section(secondary_category, guide)[1]
+    system = DRAFT_SYSTEM.format(general=general, section=section, forbidden="، ".join(forbidden_phrases(guide)),
+                                 actions="، ".join(unsupported_actions(guide)))
     shown = {**fields, "amount": config.format_amount(fields.get("amount"))}
     known = [f"{config.FIELD_LABELS[k]}: {v}" for k, v in shown.items() if v is not None]
     missing_txt = "، ".join(config.FIELD_LABELS[m] for m in missing) or "لا شي"
+    issues = config.CATEGORIES[category]
+    if secondary_category and secondary_category != category:
+        issues += f"، ومشكلة ثانية: {config.CATEGORIES[secondary_category]} (لازم تنذكر بالرد)"
     user = (
         f"<complaint>\n{message}\n</complaint>\n\n"
-        f"الفئة: {config.CATEGORIES[category]}\n"
+        f"الفئة: {issues}\n"
         f"التفاصيل المستخرجة: {'، '.join(known) or 'ما في'}\n"
         f"المعلومات الناقصة اللي لازم نطلبها: {missing_txt}"
     )

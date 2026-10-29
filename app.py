@@ -616,14 +616,17 @@ def footer():
 
     if approve:
         text = current(r)["draft"]
-        found = pipeline.check_draft(text)
+        found = pipeline.approval_blockers(text)
         if not text.strip():
             ss[f"err_{cid}"] = "المسودة فارغة."
         elif found:
-            ss[f"err_{cid}"] = "المسودة بيها عبارة ممنوعة بدليل الدعم: " + "، ".join(found) + ". عدّلها وأعد الاعتماد."
+            ss[f"err_{cid}"] = "ما تنعتمد قبل التصحيح: " + esc("، ".join(found)) + "."
         else:
-            save("approved")
-            note_once(f"✓ انعتمد رد <bdi>{esc(label_id(r))}</bdi>.")
+            try:
+                save("approved")
+                note_once(f"✓ انعتمد رد <bdi>{esc(label_id(r))}</bdi>.")
+            except db.DraftBlocked as e:
+                ss[f"err_{cid}"] = "ما تنعتمد قبل التصحيح: " + esc("، ".join(e.blockers)) + "."
         st.rerun()
     if follow:
         save("needs_followup")
@@ -633,13 +636,16 @@ def footer():
         v = current(r)
         if v["cat"] != r["category"]:
             with db.connect() as conn:
-                db.save_review(conn, cid, r["decision"] or "needs_followup", v["draft"], v["cat"], v["note"] or None)
+                try:
+                    db.save_review(conn, cid, r["decision"] or "needs_followup", v["draft"], v["cat"], v["note"] or None)
+                except db.DraftBlocked:  # اعتماد قديم ما يعبر الفحص الحالي: يرجع للمتابعة
+                    db.save_review(conn, cid, "needs_followup", v["draft"], v["cat"], v["note"] or None)
         with st.spinner("جاري كتابة مسودة جديدة…"):
             try:
                 draft, found = pipeline.regenerate_draft(cid)
                 ss["edits"].setdefault(cid, {})["draft"] = draft
                 if found:
-                    ss[f"err_{cid}"] = "المسودة الجديدة بيها عبارة ممنوعة، عدّلها قبل الاعتماد."
+                    ss[f"err_{cid}"] = "المسودة الجديدة ما تنعتمد قبل التصحيح: " + esc("، ".join(found)) + "."
             except llm.LLMError as e:
                 ss[f"err_{cid}"] = f"تعذّرت إعادة الكتابة: {short_error(str(e))}"
         st.rerun()

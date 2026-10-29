@@ -10,7 +10,7 @@ from unittest import mock
 from masar import config, db, ingest, llm, pipeline
 
 
-def fake_call(answer, draft="وصلتنا شكواك وراح يتابعها القسم المختص."):
+def fake_call(answer, draft="وصلتنا شكواك، والحالة تحتاج متابعة من الموظف المختص."):
     def _call(system, user, schema=None, **kw):
         if schema:
             return llm.LLMResult(dict(answer), "", 10, 10, 5)

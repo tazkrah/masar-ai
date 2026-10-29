@@ -32,7 +32,8 @@ MAX_RATE_LIMIT_WAIT = float(os.getenv("MASAR_MAX_RATE_LIMIT_WAIT", "90"))
 MAX_TOKENS_CLASSIFY = 1000
 MAX_TOKENS_DRAFT = 800
 CONFIDENCE_THRESHOLD = float(os.getenv("MASAR_CONFIDENCE_THRESHOLD", "0.75"))
-PROMPT_VERSION = "v2"  # v2: الأسئلة حسب موضوعها، وتاريخ الاستلام مو تاريخ المشكلة
+PROMPT_VERSION = "v3"  # v3: السبب مسنود بالرسالة، والمسودة ما تدّعي إجراء ولا تطلب معلومات بلا حاجة
+# v2: الأسئلة حسب موضوعها، وتاريخ الاستلام مو تاريخ المشكلة
 
 MAX_MESSAGE_CHARS = 2000
 
@@ -89,7 +90,26 @@ REVIEW_REASON_LABELS = {
     "draft_unsupported_date": "المسودة بيها تاريخ مو مذكور بالرسالة",
     "draft_forbidden_phrase": "المسودة بيها وعد أو عبارة ممنوعة",
     "message_too_long": "الرسالة طويلة وانقطعت",
+    "reason_unsupported": "تبرير الموديل بيه تفصيل مو مذكور بالرسالة",
+    "draft_unsupported_action": "المسودة تدّعي إجراء ما انعمل (إيقاف، رفع طلب، مراجعة)",
+    "draft_sensitive_request": "المسودة تطلب معلومة حساسة أو ما إلها حاجة",
+    "draft_irrelevant_request": "المسودة تطلب معلومة ما تناسب الحالة",
+    "draft_missing_issue": "الرسالة بيها أكثر من مشكلة والمسودة ما ذكرت الثانية",
+    "draft_too_long": "المسودة أطول من اللازم",
 }
+
+# كلمات تدل إن المسودة ذكرت مشكلة من هالفئة (لفحص المشكلة الثانية بالرسائل المتعددة)
+CATEGORY_KEYWORDS = {
+    "transfer_failed": ["تحويل", "التحويل", "حوالة", "الحوالة", "حولت"],
+    "wrong_recipient": ["المستلم", "مستلم", "رقم غلط", "الرقم الغلط", "بالغلط"],
+    "account_access": ["الدخول", "دخول", "رمز التحقق", "الرمز", "حسابك", "الحساب"],
+    "agent_dispute": ["الوكيل", "وكيل"],
+    "card": ["البطاقة", "بطاقة", "بطاقتك"],
+    "other": [],
+}
+
+# المسودة المطلوبة 2-4 جمل؛ أطول من هذا تنحوّل للمراجعة
+MAX_DRAFT_CHARS = 500
 
 
 def format_amount(amount: int | None) -> str | None:

@@ -118,6 +118,117 @@ def check_draft(draft: str):
     return found
 
 
+# ادعاء إحالة: فعل وصول/تحويل/إرسال، وبعده بكلمتين أو أقل قسم أو موظف أو فريق ("وصل طلبك لقسم البطاقات")
+_REFERRAL_RE = re.compile(
+    r"(?:وصل|وصلت|تحول|تحوّل|تحولت|تحوّلت|انحول|انحوّل|انرسل|انرسلت|انحال|انحالت|حولنا|حوّلنا|رفعنا|ارسلنا|أرسلنا|دزينا)"
+    r"\s+(?:\S+\s+){0,2}?(?:لل|ل|الى\s+|إلى\s+)(?:قسم|القسم|موظف|الموظف|فريق|الفريق|الجهة)")
+# ادعاء متابعة: موظف أو قسم أو فريق "راح" يسوي شي
+_FOLLOWUP_RE = re.compile(r"(?:الموظف|موظف|القسم|قسم|الفريق|فريق|فريقنا)\S*\s+(?:\S+\s+){0,3}?(?:راح|رح|سوف|سـ)\s*\S+")
+
+
+def unsupported_actions_in_draft(draft: str):
+    """عبارات تدّعي إجراء ما سوّاه النظام: إيقاف بطاقة، رفع طلب، مراجعة عملية، إحالة لقسم أو متابعة موظف."""
+    draft = draft or ""
+    found = [p for p in prompts.unsupported_actions() if p in draft]
+    found += [m.group(0) for m in _REFERRAL_RE.finditer(draft)]
+    found += [m.group(0) for m in _FOLLOWUP_RE.finditer(draft)]
+    return found
+
+
+# طلب معلومة: جملة بيها فعل طلب (مو منفي) ومعلومة من القائمة، بأي ترتيب. التذكير ("ما راح نطلب الرمز") ما ينحسب.
+_ASK = (r"(?:زودنا|زوّدنا|تزويدنا|تزودنا|ترسل|ارسل|أرسل|دز|اكتب|شاركنا|مشارك|نحتاج|نطلب|ابعث|يرجى|نرجو|"
+        r"ممكن\s+(?:ت|تنطي|تعطي)|انطينا|عطينا)")
+_NEG = r"(?:ما|لا|مو|أبداً|ابداً|ماراح|ما راح)\s+(?:\S+\s+){0,2}$"
+_SENSITIVE = [r"رقم\s*الجهاز", r"IMEI", r"نسخة\s*(?:النظام|التطبيق)", r"الرمز\s*السري", r"الرقم\s*السري", r"\bPIN\b",
+              r"رمز\s*التحقق", r"\bOTP\b", r"كلمة\s*(?:المرور|السر)", r"رقم\s*البطاقة\s*(?:الكامل|كامل)", r"CVV",
+              r"تاريخ\s*انتهاء\s*البطاقة", r"الرموز\s*الخلفية"]
+_CARD_DIGITS = r"(?:آخر|اخر|أخر)\s*(?:4|٤|أربع|اربع|اربعة|أربعة)\s*(?:أرقام|ارقام)|أرقام\s*البطاقة|ارقام\s*البطاقة|رقم\s*البطاقة"
+_CARD_NOT_ARRIVED = re.compile(r"بطاق\w*.{0,60}?(?:ما\s*(?:وصل|وصلت|وصلتني|وصلني|استلم|استلمت|اجت|إجت)|لحد\s*الآن)|"
+                               r"(?:ما\s*(?:وصل|وصلت|وصلتني|وصلني|استلمت|اجت))\s*(?:\S+\s+){0,3}بطاق", re.S)
+
+
+def _requests(draft, pattern):
+    """الجمل اللي بيها فعل طلب غير منفي ومعلومة تطابق pattern."""
+    hits = []
+    for sent in re.split(r"[.!؟?\n]", draft or ""):
+        if not re.search(pattern, sent, re.I):
+            continue
+        if any(not re.search(_NEG, sent[: m.start()]) for m in re.finditer(_ASK, sent)):
+            hits.append(sent.strip())
+    return hits
+
+
+def sensitive_requests(draft: str):
+    """المسودة تطلب رقم الجهاز أو رمز أو كلمة مرور أو رقم البطاقة الكامل."""
+    return _requests(draft, "|".join(_SENSITIVE))
+
+
+def irrelevant_requests(draft: str, message: str):
+    """طلبات ما تناسب الحالة: أرقام بطاقة لبطاقة الزبون يگول ما وصلته."""
+    if _CARD_NOT_ARRIVED.search(message or ""):
+        return _requests(draft, _CARD_DIGITS)
+    return []
+
+
+def draft_missing_issue(draft: str, secondary_category: str | None, category: str):
+    """الرسالة بيها مشكلة ثانية والمسودة ما بيها أي كلمة تدل عليها."""
+    if not secondary_category or secondary_category == category:
+        return False
+    words = config.CATEGORY_KEYWORDS.get(secondary_category) or []
+    return bool(words) and not any(w in (draft or "") for w in words)
+
+
+# تفاصيل بالتبرير لازم يكون إلها أصل بالرسالة (جذر الكلمة لازم ينذكر)
+_REASON_CLAIMS = {
+    "خصم": ["خصم", "استقطع", "قطع", "سحب", "نقص"],
+    "ناجح": ["ناجح", "نجح", "تم"],
+    "نجح": ["ناجح", "نجح", "تم"],
+    "فاشل": ["فاشل", "فشل", "ما تم", "ما صار", "ما وصل"],
+    "مرتين": ["مرتين", "مره ثانية", "مرة ثانية", "تكرر", "دبل"],
+    "سرق": ["سرق"],
+    "اختراق": ["اختراق", "اخترق", "هكر", "دخل"],
+}
+
+
+def reason_unsupported(reason: str, message: str):
+    """تفاصيل بالتبرير مو مذكورة بالرسالة: أرقام، أو سبب منسوخ من الأمثلة، أو ادعاء بلا أصل."""
+    reason, msg = (reason or "").translate(ARABIC_DIGITS), (message or "").translate(ARABIC_DIGITS)
+    found = []
+    msg_nums = set(re.findall(r"\d+", re.sub(r"[,،٬]", "", msg)))
+    for n in re.findall(r"\d+", re.sub(r"[,،٬]", "", reason)):
+        if n not in msg_nums:
+            found.append(f"رقم: {n}")
+    for ex_msg, ex in ((m, o) for _, m, o in prompts.FEW_SHOT):
+        if ex["reason"].strip() == reason.strip() and ex_msg != message:
+            found.append("منسوخ من مثال")
+    for claim, roots in _REASON_CLAIMS.items():
+        if claim in reason and not any(r in msg for r in roots):
+            found.append(claim)
+    return found
+
+
+def approval_blockers(draft: str) -> list[str]:
+    """أسباب تمنع اعتماد المسودة (الأصلية أو المعدّلة أو المعاد كتابتها): عبارة ممنوعة، ادعاء إجراء، طلب معلومة حساسة."""
+    out = [f"عبارة ممنوعة: {p}" for p in check_draft(draft or "")]
+    out += [f"ادعاء إجراء ما صار: {p}" for p in unsupported_actions_in_draft(draft)]
+    out += [f"طلب معلومة حساسة: {s}" for s in sensitive_requests(draft)]
+    return out
+
+
+def draft_review_reasons(draft, message, date_field, category, secondary_category=None):
+    """كل فحوصات المسودة بمكان واحد. يرجع أسباب المراجعة."""
+    checks = [
+        ("draft_forbidden_phrase", check_draft(draft)),
+        ("draft_unsupported_date", draft_unsupported_dates(draft, message, date_field)),
+        ("draft_unsupported_action", unsupported_actions_in_draft(draft)),
+        ("draft_sensitive_request", sensitive_requests(draft)),
+        ("draft_irrelevant_request", irrelevant_requests(draft, message)),
+        ("draft_missing_issue", draft_missing_issue(draft, secondary_category, category)),
+        ("draft_too_long", len(draft or "") > config.MAX_DRAFT_CHARS),
+    ]
+    return [name for name, hit in checks if hit]
+
+
 def _logger(calls, stage):
     """يرجع دالة on_request تضيف كل طلب HTTP لقائمة calls مع المرحلة."""
     if calls is None:
@@ -153,7 +264,10 @@ def analyze(complaint: dict, with_draft=True, provider=None, model=None, calls=N
     except (TypeError, ValueError):
         confidence = 0.0
     flags = [f for f in (x.get("flags") or []) if f in MODEL_FLAGS]
-    if x.get("secondary_category") and x["secondary_category"] != category and "multiple_issues" not in flags:
+    secondary = x.get("secondary_category") if x.get("secondary_category") in config.CATEGORIES else None
+    if secondary == category:
+        secondary = None
+    if secondary and "multiple_issues" not in flags:
         flags.append("multiple_issues")
 
     if confidence < config.CONFIDENCE_THRESHOLD:
@@ -161,6 +275,9 @@ def analyze(complaint: dict, with_draft=True, provider=None, model=None, calls=N
     reasons.extend(flags)
     if clipped:
         reasons.append("message_too_long")
+    reason = (x.get("reason") or "").strip()
+    if reason_unsupported(reason, message):
+        reasons.append("reason_unsupported")
 
     missing = [f for f in config.REQUIRED_FIELDS[category] if fields[f] is None]
     out = dict(
@@ -173,8 +290,10 @@ def analyze(complaint: dict, with_draft=True, provider=None, model=None, calls=N
         date=fields["date"],
         security_risk=int(security_risk),
         confidence=confidence,
-        reason=(x.get("reason") or "").strip(),
+        secondary_category=secondary,
+        reason=reason,
         model_flags=flags,
+        raw_output=x,
         missing_fields=missing,
         provider=provider or config.PROVIDER,
         model=model or config.MODEL,
@@ -187,14 +306,11 @@ def analyze(complaint: dict, with_draft=True, provider=None, model=None, calls=N
     )
 
     if with_draft:
-        dsys, duser = prompts.draft_prompts(message, category, fields, missing)
+        dsys, duser = prompts.draft_prompts(message, category, fields, missing, secondary)
         dres = llm.call(dsys, duser, max_tokens=config.MAX_TOKENS_DRAFT, provider=provider, model=model,
                         on_request=_logger(calls, "draft"))
         draft = format_amounts_in_draft(dres.text.strip(), fields["amount"])
-        if check_draft(draft):
-            reasons.append("draft_forbidden_phrase")
-        if draft_unsupported_dates(draft, message, fields["date"]):
-            reasons.append("draft_unsupported_date")
+        reasons.extend(draft_review_reasons(draft, message, fields["date"], category, secondary))
         out["draft"] = draft
         out["latency_ms"] += dres.latency_ms
         out["input_tokens"] = _sum_tokens(out["input_tokens"], dres.input_tokens)
@@ -297,10 +413,11 @@ def regenerate_draft(complaint_id, db_path=None):
         r = dict(conn.execute("SELECT * FROM results WHERE complaint_id = ?", (complaint_id,)).fetchone())
         v = conn.execute("SELECT corrected_category FROM reviews WHERE complaint_id = ?", (complaint_id,)).fetchone()
     category = (v and v[0]) or r["category"]
+    secondary = r.get("secondary_category")
     fields = {"transaction_id": r["transaction_id"], "amount": r["amount"], "date": r["date"]}
     missing = [f for f in config.REQUIRED_FIELDS[category] if fields[f] is None]
     message, _ = clip(c["message"])
-    dsys, duser = prompts.draft_prompts(message, category, fields, missing)
+    dsys, duser = prompts.draft_prompts(message, category, fields, missing, secondary)
     calls = []
     try:
         res = llm.call(dsys, duser, max_tokens=config.MAX_TOKENS_DRAFT, on_request=_logger(calls, "redraft"))
@@ -309,4 +426,4 @@ def regenerate_draft(complaint_id, db_path=None):
             db.log_calls(conn, [{**c, "complaint_id": complaint_id, "provider": config.PROVIDER, "model": config.MODEL}
                                 for c in calls])
     draft = format_amounts_in_draft(res.text.strip(), r["amount"])
-    return draft, check_draft(draft)
+    return draft, approval_blockers(draft)

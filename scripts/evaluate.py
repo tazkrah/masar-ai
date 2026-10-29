@@ -56,6 +56,71 @@ def norm(v):
     return None if v in ("", None) else str(v)
 
 
+FIELDS = ("transaction_id", "amount", "date")
+MODEL_REASONS = {"low_confidence"} | pipeline.MODEL_FLAGS  # أسباب مراجعة من الموديل نفسه، مو من حماية الكود
+
+
+def raw_fields(raw):
+    """حقول جواب الموديل الخام قبل الحماية. رقم العملية يتوحد شكله بس (أرقام إنجليزية بلا فواصل)."""
+    txid = pipeline._digits_only(raw.get("transaction_id")) or None
+    return {"transaction_id": txid, "amount": raw.get("amount_iqd"), "date": raw.get("date") or None}
+
+
+def raw_needs_review(r, raw, threshold):
+    """قرار المراجعة لو اعتمدنا على الموديل بس: ثقة منخفضة أو إشارة منه."""
+    try:
+        conf = float(raw.get("confidence"))
+    except (TypeError, ValueError):
+        conf = 0.0
+    flags = set(raw.get("flags") or []) & pipeline.MODEL_FLAGS
+    return conf < threshold or bool(flags) or bool(raw.get("secondary_category"))
+
+
+def raw_vs_guarded(done, labels, threshold):
+    """نتيجة الموديل الخام مقابل النتيجة بعد حماية الكود (مسح القيم غير المسنودة، فحص التبرير والمسودة)."""
+    with_raw = [r for r in done if r.get("raw_output")]
+    guard = Counter(x for r in done for x in r["review_reasons"] if x not in MODEL_REASONS)
+    out = {"rows_with_raw": len(with_raw), "rows_without_raw": len(done) - len(with_raw),
+           "guard_review_reasons": dict(guard)}
+    if not with_raw:
+        out["note"] = "النتائج قبل v3 ما بيها جواب خام محفوظ، فالمقارنة غير متوفرة لهالصفوف."
+        return out
+    n = len(with_raw)
+    raw_ok, grd_ok, changed = Counter(), Counter(), Counter()
+    raw_rev = grd_rev = raw_hard = grd_hard = hard = 0
+    for r in with_raw:
+        g, rf = labels[r["source_id"]], raw_fields(r["raw_output"])
+        for f in FIELDS:
+            raw_ok[f] += norm(g[f]) == norm(rf[f])
+            grd_ok[f] += norm(g[f]) == norm(r[f])
+            changed[f] += norm(rf[f]) != norm(r[f])
+        rr, gr = raw_needs_review(r, r["raw_output"], threshold), bool(r["review_reasons"])
+        raw_rev += rr
+        grd_rev += gr
+        if int(g["expect_review"]):
+            hard += 1
+            raw_hard += rr
+            grd_hard += gr
+    out.update({
+        "field_exact": {"raw": {f: raw_ok[f] / n for f in FIELDS}, "guarded": {f: grd_ok[f] / n for f in FIELDS}},
+        "fields_changed_by_guard": dict(changed),
+        "review_rate": {"raw": raw_rev / n, "guarded": grd_rev / n},
+        "hard_cases_sent_to_review": {"raw": f"{raw_hard}/{hard}", "guarded": f"{grd_hard}/{hard}"},
+    })
+    return out
+
+
+def class_coverage(pairs, per_class):
+    """كل فئة: كم مرة بالإجابات الصحيحة وكم مرة توقعها الموديل. الفئة الغايبة عن الاثنين F1 مالتها بلا معنى."""
+    gold, pred = Counter(g for g, _ in pairs), Counter(p for _, p in pairs)
+    cov = {c: {"gold": gold[c], "predicted": pred[c], "f1": per_class[c] if gold[c] or pred[c] else None}
+           for c in config.CATEGORIES}
+    present = [c for c in config.CATEGORIES if gold[c] or pred[c]]
+    absent = [c for c in config.CATEGORIES if c not in present]
+    macro_present = sum(per_class[c] for c in present) / len(present) if present else None
+    return cov, present, absent, macro_present
+
+
 def score(results, labels, threshold):
     done = [r for r in results if r["status"] == "done"]
     failed = [r for r in results if r["status"] != "done"]
@@ -101,6 +166,7 @@ def score(results, labels, threshold):
 
     n = len(done)
     macro, per_class = f1_macro(pairs, list(config.CATEGORIES))
+    coverage, present, absent, macro_present = class_coverage(pairs, per_class)
     tin = sum(r["input_tokens"] for r in done if r["input_tokens"] is not None)
     tout = sum(r["output_tokens"] for r in done if r["output_tokens"] is not None)
     tunknown = sum(r["input_tokens"] is None or r["output_tokens"] is None for r in done)
@@ -109,7 +175,12 @@ def score(results, labels, threshold):
         "n": len(results), "processed": n, "failed": len(failed),
         "failures": [{"id": r["source_id"], "error": r["error"]} for r in failed],
         "category_accuracy": sum(g == p for g, p in pairs) / n if n else None,
-        "category_macro_f1": macro, "per_class_f1": per_class,
+        "category_macro_f1_present_classes": macro_present,
+        "category_macro_f1_all_classes": macro,
+        "classes_absent_from_sample": absent,
+        "class_coverage_note": (f"الفئات الغايبة عن العينة ({'، '.join(absent)}) ما إلها أمثلة، فالـ F1 مالتها ما ينقاس. "
+                                "macro-F1 لكل الفئات يحسبها صفر وينزل بدون سبب حقيقي.") if absent else None,
+        "class_coverage": coverage,
         "category_accuracy_lenient_multi": lenient / n if n else None,
         "field_exact": {f: field_ok[f] / n for f in ("transaction_id", "amount", "date")} if n else {},
         "field_exact_all3": sum(1 for r in done if all(norm(labels[r["source_id"]][f]) == norm(r[f]) for f in ("transaction_id", "amount", "date"))) / n if n else None,
@@ -125,6 +196,7 @@ def score(results, labels, threshold):
         "avg_latency_ms": sum(r["latency_ms"] or 0 for r in done) / n if n else None,
         "tokens": {"input": tin, "output": tout, "rows_with_unknown_tokens": tunknown},
         "est_cost_usd": round(tin / 1e6 * price[0] + tout / 1e6 * price[1], 4) if price else None,
+        "raw_vs_guarded": raw_vs_guarded(done, labels, threshold),
         "errors": errors,
     }
 
@@ -230,7 +302,7 @@ def main():
         with (RUNS / "test_runs.log").open("a", encoding="utf-8") as fh:
             fh.write(f"{stamp} model={config.MODEL} prompt={config.PROMPT_VERSION} threshold={config.CONFIDENCE_THRESHOLD}\n")
 
-    show = {k: v for k, v in report.items() if k not in ("errors", "confusion", "per_class_f1", "failures")}
+    show = {k: v for k, v in report.items() if k not in ("errors", "confusion", "failures")}
     print(json.dumps(show, ensure_ascii=False, indent=2))
     print(f"\nأخطاء: {len(report['errors'])} — التفاصيل بـ {show_path(out)}")
 
