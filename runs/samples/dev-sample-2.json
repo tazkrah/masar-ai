@@ -1,0 +1,195 @@
+{
+  "split": "dev",
+  "created_at": "2026-10-29T18:40:29",
+  "seed": 20261029,
+  "method": "طبقي حسب الفئة ونوع الصعوبة من الإجابات الصحيحة، عشوائي ببذرة ثابتة. عائلة جديدة لكل شكوى قدر الإمكان، مو من عائلات العشر السابقة؛ family_seen_before = ما كان أكو بديل بهالطبقة",
+  "quotas": {
+    "transfer_failed/clear": 3,
+    "transfer_failed/multiple_issues": 1,
+    "wrong_recipient/clear": 2,
+    "wrong_recipient/similar_names": 1,
+    "account_access/clear": 3,
+    "agent_dispute/clear": 2,
+    "agent_dispute/multiple_issues": 1,
+    "card/clear": 3,
+    "other/clear": 2,
+    "other/possible_injection": 1,
+    "other/unclear_message": 1
+  },
+  "excluded": [
+    "DEV-A10-4",
+    "DEV-K10-4",
+    "DEV-G07-5",
+    "DEV-G01-3",
+    "DEV-T08-2",
+    "DEV-K04-3",
+    "DEV-O03-2",
+    "DEV-T11-1",
+    "DEV-O02-5",
+    "DEV-K07-3"
+  ],
+  "ids": [
+    "DEV-T10-1",
+    "DEV-T01-2",
+    "DEV-T04-3",
+    "DEV-T11-2",
+    "DEV-W01-1",
+    "DEV-W07-3",
+    "DEV-W10-2",
+    "DEV-A02-1",
+    "DEV-A04-3",
+    "DEV-A07-1",
+    "DEV-G03-3",
+    "DEV-G02-2",
+    "DEV-G08-5",
+    "DEV-K03-2",
+    "DEV-K08-4",
+    "DEV-K02-5",
+    "DEV-O08-4",
+    "DEV-O01-2",
+    "DEV-O09-2",
+    "DEV-A10-2"
+  ],
+  "items": [
+    {
+      "id": "DEV-T10-1",
+      "category": "transfer_failed",
+      "kind": "clear",
+      "family": "T10",
+      "family_seen_before": false
+    },
+    {
+      "id": "DEV-T01-2",
+      "category": "transfer_failed",
+      "kind": "clear",
+      "family": "T01",
+      "family_seen_before": false
+    },
+    {
+      "id": "DEV-T04-3",
+      "category": "transfer_failed",
+      "kind": "clear",
+      "family": "T04",
+      "family_seen_before": false
+    },
+    {
+      "id": "DEV-T11-2",
+      "category": "transfer_failed",
+      "kind": "multiple_issues",
+      "family": "T11",
+      "family_seen_before": true
+    },
+    {
+      "id": "DEV-W01-1",
+      "category": "wrong_recipient",
+      "kind": "clear",
+      "family": "W01",
+      "family_seen_before": false
+    },
+    {
+      "id": "DEV-W07-3",
+      "category": "wrong_recipient",
+      "kind": "clear",
+      "family": "W07",
+      "family_seen_before": false
+    },
+    {
+      "id": "DEV-W10-2",
+      "category": "wrong_recipient",
+      "kind": "similar_names",
+      "family": "W10",
+      "family_seen_before": false
+    },
+    {
+      "id": "DEV-A02-1",
+      "category": "account_access",
+      "kind": "clear",
+      "family": "A02",
+      "family_seen_before": false
+    },
+    {
+      "id": "DEV-A04-3",
+      "category": "account_access",
+      "kind": "clear",
+      "family": "A04",
+      "family_seen_before": false
+    },
+    {
+      "id": "DEV-A07-1",
+      "category": "account_access",
+      "kind": "clear",
+      "family": "A07",
+      "family_seen_before": false
+    },
+    {
+      "id": "DEV-G03-3",
+      "category": "agent_dispute",
+      "kind": "clear",
+      "family": "G03",
+      "family_seen_before": false
+    },
+    {
+      "id": "DEV-G02-2",
+      "category": "agent_dispute",
+      "kind": "clear",
+      "family": "G02",
+      "family_seen_before": false
+    },
+    {
+      "id": "DEV-G08-5",
+      "category": "agent_dispute",
+      "kind": "multiple_issues",
+      "family": "G08",
+      "family_seen_before": false
+    },
+    {
+      "id": "DEV-K03-2",
+      "category": "card",
+      "kind": "clear",
+      "family": "K03",
+      "family_seen_before": false
+    },
+    {
+      "id": "DEV-K08-4",
+      "category": "card",
+      "kind": "clear",
+      "family": "K08",
+      "family_seen_before": false
+    },
+    {
+      "id": "DEV-K02-5",
+      "category": "card",
+      "kind": "clear",
+      "family": "K02",
+      "family_seen_before": false
+    },
+    {
+      "id": "DEV-O08-4",
+      "category": "other",
+      "kind": "clear",
+      "family": "O08",
+      "family_seen_before": false
+    },
+    {
+      "id": "DEV-O01-2",
+      "category": "other",
+      "kind": "clear",
+      "family": "O01",
+      "family_seen_before": false
+    },
+    {
+      "id": "DEV-O09-2",
+      "category": "other",
+      "kind": "possible_injection",
+      "family": "O09",
+      "family_seen_before": false
+    },
+    {
+      "id": "DEV-A10-2",
+      "category": "other",
+      "kind": "unclear_message",
+      "family": "A10",
+      "family_seen_before": true
+    }
+  ]
+}

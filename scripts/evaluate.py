@@ -3,6 +3,7 @@
     python scripts/evaluate.py --split dev                 # التطوير (البيانات المولّدة بالموديل)
     python scripts/evaluate.py --split dev --dataset template   # بيانات القوالب (لاختبار الكود)
     python scripts/evaluate.py --split dev --limit 10      # تجربة صغيرة أولاً
+    python scripts/evaluate.py --split dev --ids runs/samples/dev-sample-2.json   # عينة محفوظة مسبقاً
     python scripts/evaluate.py --split calib --sweep       # ضبط حد الثقة
     python scripts/evaluate.py --split test --final        # الاختبار النهائي (مرة وحدة بالنهاية)
 
@@ -223,6 +224,21 @@ def run_db_path(arg):
     return p
 
 
+def select_ids(rows, ids_path, split):
+    """الشكاوى المذكورة بملف العينة بس. أي معرّف ناقص يوقف التشغيل بدال ما نشغّل عينة مختلفة."""
+    p = Path(ids_path).expanduser()
+    if not p.is_absolute():
+        p = ROOT / p
+    sample = json.loads(p.read_text(encoding="utf-8"))
+    if sample.get("split") not in (None, split):
+        sys.exit(f"العينة من {sample['split']} مو {split}")
+    by_id = {r["source_id"]: r for r in rows}
+    missing = [i for i in sample["ids"] if i not in by_id]
+    if missing:
+        sys.exit(f"معرّفات مو موجودة بـ {split}: {', '.join(missing)}")
+    return [by_id[i] for i in sample["ids"]]
+
+
 def show_path(p):
     """المسار نسبةً للمشروع إذا داخله، وإلا المسار الكامل (بدال ما يطيح)."""
     try:
@@ -236,6 +252,7 @@ def main():
     ap.add_argument("--split", choices=["dev", "calib", "test"], required=True)
     ap.add_argument("--dataset", choices=list(DATASETS), default="llm")
     ap.add_argument("--limit", type=int)
+    ap.add_argument("--ids", help="ملف JSON بعينة محفوظة مسبقاً (المفتاح ids): نشغّل هذي الشكاوى بس، بنفس ترتيبها")
     ap.add_argument("--no-drafts", action="store_true")
     ap.add_argument("--workers", type=int, default=None, help="الافتراضي MASAR_WORKERS (1)")
     ap.add_argument("--sweep", action="store_true")
@@ -252,6 +269,8 @@ def main():
         sys.exit(f"ما لگينا {env}. انسخ .env.example إلى .env وحط المفتاح.")
 
     rows, labels = load(args.split, args.dataset)
+    if args.ids:
+        rows = select_ids(rows, args.ids, args.split)
     if args.limit:
         rows = rows[: args.limit]
 
