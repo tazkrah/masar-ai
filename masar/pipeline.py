@@ -144,8 +144,13 @@ _PROMISE_RES = [
     re.compile(r"(?<!\w)[وف]?(?:وقفنا|أوقفنا|اوقفنا|حظرنا|جمدنا|رفعنا|راجعنا|تابعنا|تواصلنا|اتصلنا|حولنا|حوّلنا|أرسلنا|ارسلنا|"
                r"دزينا|بلّغنا|فحصنا|نقلنا)(?!\w)"),
 ]
-_QUOTE_RE = re.compile(r"«[^»]*»|\"[^\"]*\"|“[^”]*”")
-_PROMISE_NEG = re.compile(r"(?:^|\s)(?:ما|لا|مو|ماكو|ماراح|بدون|دون|لن|ولا)\s+(?:\S+\s+)?$")
+# النفي يلغي الوعد بس إذا جاي مباشرة قبله ("ما راح نتابع"، "ما بنتواصل")، مو أي نفي بنفس الجملة ("لا تقلق بنتابع").
+_PROMISE_NEG = re.compile(r"(?:^|\s)(?:ما|لا|مو|ماراح|لن|ولا|وما|بدون|دون)\s*$")
+# إسناد الكلام للزبون أو لطرف ثاني نقل عنه الزبون: "ذكرت إن الوكيل گال لك ..."
+_ATTRIBUTION = re.compile(r"(?<!\w)(?:ذكرت|ذكرتي|ذكرتلنا|گلت|گلتي|گتلنا|قلت|كتبت|تگول|تقول|گال|قال|گالولك|قالولك|گالوا|قالوا|"
+                          r"وعدك|وعدوك|تريد|تطلب|طلبت|حسب\s+كلامك|حسب\s+رسالتك)(?!\w)")
+_CLAUSE_END = ".!؟?\n،,؛;"
+_ATTRIBUTION_WINDOW = 6  # أقصى عدد كلمات بين الإسناد والعبارة المنقولة
 
 
 _TASHKEEL = re.compile(r"[\u064B-\u0652\u0670\u0640]")  # حركات وشدة وتطويل
@@ -155,25 +160,49 @@ def _spaces(text):
     return re.sub(r"\s+", " ", _TASHKEEL.sub("", text or "")).strip()
 
 
+def _quoted_from_customer(before: str, hit: str, msg: str) -> bool:
+    """العبارة منقولة بوضوح عن الزبون: مكتوبة برسالته، وقبلها بنفس الجملة الفرعية إسناد قريب ("ذكرت إن…").
+
+    علامات التنصيص لحالها ما تكفي، ولا وجود العبارة برسالة الزبون لحاله. أي غموض = وعد يحتاج تصحيح.
+    """
+    if not msg or _spaces(hit) not in msg:
+        return False
+    attributions = list(_ATTRIBUTION.finditer(before))
+    if not attributions:
+        return False
+    between = before[attributions[-1].end():]
+    return len(re.sub(r"[«»\"“”]", " ", between).split()) <= _ATTRIBUTION_WINDOW
+
+
 def promises_in_draft(draft: str, message: str | None = None):
     """وعود بإحالة أو متابعة أو رد، أو ادعاء إجراء ما صار. يرجع العبارات اللي انمسكت.
 
-    ما ينحسب: الكلام المنفي ("ما راح نتواصل وياك نطلب رمز")، والمقتبس بين علامات تنصيص،
-    والعبارة إذا هي نفسها مكتوبة برسالة الزبون (المسودة تنقل كلامه).
+    ما ينحسب بس:
+    - وعد منفي مباشرة ("ما راح نتواصل وياك"). النفي ما يلغي وعد ثاني بنفس الجملة.
+    - كلام منقول بوضوح عن الزبون (_quoted_from_customer). كل إسناد يغطي أول عبارة بعده بس،
+      فتكرار نفس الكلام بعده كالتزام من الدعم ينمسك.
     """
-    text = _QUOTE_RE.sub(lambda m: " " * len(m.group(0)), _TASHKEEL.sub("", draft or ""))
+    text = _TASHKEEL.sub("", draft or "")
     msg = _spaces(message)
-    found = []
-    for rx in _PROMISE_RES:
-        for m in rx.finditer(text):
-            sentence_start = max(text.rfind(c, 0, m.start()) for c in ".!؟?\n") + 1
-            if _PROMISE_NEG.search(text[sentence_start: m.start()]):
+    matches = sorted((m for rx in _PROMISE_RES for m in rx.finditer(text)), key=lambda m: m.start())
+    found, used_attr, excused = [], set(), []  # excused: مدى العبارات المنفية أو المنقولة
+    for m in matches:
+        if any(m.start() < e and m.end() > s for s, e in excused):  # جزء من نفس العبارة ("ما راح نتواصل وياك")
+            continue
+        clause_start = max(text.rfind(c, 0, m.start()) for c in _CLAUSE_END) + 1
+        before = text[clause_start: m.start()]
+        hit = m.group(0).strip()
+        if _PROMISE_NEG.search(before):
+            excused.append(m.span())
+            continue
+        if _quoted_from_customer(before, hit, msg):
+            attr_pos = clause_start + list(_ATTRIBUTION.finditer(before))[-1].start()
+            if attr_pos not in used_attr:
+                used_attr.add(attr_pos)
+                excused.append(m.span())
                 continue
-            hit = m.group(0).strip()
-            if msg and _spaces(hit) in msg:
-                continue
-            if hit not in found:
-                found.append(hit)
+        if hit not in found:
+            found.append(hit)
     return found
 
 

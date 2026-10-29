@@ -120,14 +120,55 @@ class DraftActionTests(unittest.TestCase):
             self.assertEqual(pipeline.promises_in_draft(d), [], d)
             self.assertEqual(pipeline.approval_blockers(d), [], d)
 
-    def test_quoted_customer_words_ok(self):
-        msg = "الوكيل گال بنتابع وياك بس لحد الآن ما صار شي، أريد الرد بأسرع وقت"
-        for d in ("ذكرت إن الوكيل گال لك «بنحوّلها بعد ساعة». الحالة تحتاج متابعة من الموظف المختص.",
-                  "ذكرت إن الوكيل گال بنتابع وياك. الحالة تحتاج متابعة من الموظف المختص.",
+    MSG_Q = "الوكيل گال بنتابع وياك بس لحد الآن ما صار شي، أريد الرد بأسرع وقت"
+
+    def test_clearly_reported_customer_words_ok(self):
+        """نقل كلام الزبون بوضوح: إسناد قريب + العبارة مكتوبة برسالته."""
+        for d in ("ذكرت إن الوكيل گال لك «بنتابع وياك». الحالة تحتاج متابعة من الموظف المختص.",
+                  "ذكرت إن الوكيل گال بنتابع وياك، والحالة تحتاج متابعة من الموظف المختص.",
                   "نفهم إنك تريد الرد بأسرع وقت، والحالة تحتاج متابعة عاجلة من الموظف المختص."):
-            self.assertEqual(pipeline.promises_in_draft(d, msg), [], d)
-        # نفس الوعد بدون ما يكون من كلام الزبون ينمسك
-        self.assertTrue(pipeline.promises_in_draft("بنتابع وياك بأسرع وقت.", "الوكيل ما سلّمني المبلغ"))
+            self.assertEqual(pipeline.promises_in_draft(d, self.MSG_Q), [], d)
+            self.assertEqual(pipeline.approval_blockers(d, self.MSG_Q), [], d)
+
+    def test_adopting_customer_words_as_promise_flagged(self):
+        """نفس كلام الزبون بس كالتزام من الدعم: بدون إسناد، أو مكرر بعد النقل."""
+        for d in ("بنتابع وياك، والحالة تحتاج متابعة من الموظف المختص.",
+                  "الحالة تحتاج متابعة، ونرد عليك بأسرع وقت.",
+                  "ذكرت إن الوكيل گال بنتابع وياك، وإحنا هم بنتابع وياك.",
+                  "ذكرت إن الوكيل گال بنتابع وياك وبنتابع وياك.",
+                  "مثل ما ذكرت، بنتابع وياك."):
+            self.assertTrue(pipeline.promises_in_draft(d, self.MSG_Q), d)
+            self.assertTrue(pipeline.approval_blockers(d, self.MSG_Q), d)
+
+    def test_promise_only_in_quotes_flagged(self):
+        """علامات التنصيص لحالها ما تكفي، ولا الإسناد لكلام ما كتبه الزبون."""
+        for d in ("«بنتابع وياك» والحالة تحتاج متابعة من الموظف المختص.",
+                  "\"سنقوم بمتابعة طلبك\" والحالة تحتاج متابعة.",
+                  "ذكرت إن الوكيل گال لك «بنحوّلها بعد ساعة».",  # الإسناد موجود بس الكلام مو برسالة الزبون
+                  "الوكيل وعدك «بنتابع وياك» بس هذا بعيد عن الإسناد بهواية كلمات «بنتابع وياك»"):
+            self.assertTrue(pipeline.promises_in_draft(d, self.MSG_Q), d)
+
+    def test_negation_then_independent_promise_flagged(self):
+        """النفي يخص العبارة المنفية بس."""
+        for d in ("ما راح نطلب منك أي رمز وراح نتابع وياك.", "لا تقلق بنتابع وياك.",
+                  "ما بنتواصل وياك نطلب رمز، بس سنقوم بمتابعة حالتك.", "لا تشارك الرمز ويا أحد وحنوافيك بالنتيجة."):
+            self.assertTrue(pipeline.promises_in_draft(d), d)
+        self.assertEqual(pipeline.promises_in_draft("ما راح نتواصل وياك نطلب أي رمز."), [])
+        self.assertEqual(pipeline.promises_in_draft("ما راح نطلب منك أي رمز وراح نتابع وياك."), ["وراح نتابع"])
+
+    def test_unclear_quote_blocks_approval(self):
+        import tempfile
+        from masar import db, ingest
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "t.db"
+            db.init(path)
+            rows, _ = ingest.parse_csv(f"complaint_id,received_at,message\nQ9,2026-11-02 10:00,{self.MSG_Q}\n".encode())
+            with db.connect(path) as conn:
+                db.create_batch(conn, "t.csv", rows, [])
+                with self.assertRaises(db.DraftBlocked):
+                    db.save_review(conn, rows[0]["id"], "approved", "«بنتابع وياك». الحالة تحتاج متابعة من الموظف المختص.")
+                db.save_review(conn, rows[0]["id"], "approved",
+                               "ذكرت إن الوكيل گال لك «بنتابع وياك». الحالة تحتاج متابعة من الموظف المختص.")
 
     def test_lost_card_claim_goes_to_review(self):
         msg = "انسرقت محفظتي وبيها البطاقة، وقفوها رجاءً"
