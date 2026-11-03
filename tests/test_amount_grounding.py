@@ -160,9 +160,96 @@ class ApprovalAmountTests(unittest.TestCase):
         self.assertTrue(any(f.startswith("مبلغ") for f in found), found)
 
 
+class AmountContextTests(unittest.TestCase):
+    """الرقم ينقرا ويا وحدته وسياقه: وجود نفس الأرقام حرفياً بالرسالة ما يكفي."""
+
+    def test_unit_dropped_in_draft_flagged(self):
+        cases = (("حولت ٢٥٠ الف لاخوي وما وصلت", ("بخصوص تحويل 250 لأخوك.", "بخصوص الـ250 اللي حولتها.",
+                                                 "بخصوص تحويل 250 دينار.", "بخصوص تحويل ٢٥٠ دينار عراقي.")),
+                 ("حولت 3 مليون للمورد وما وصلت", ("بخصوص تحويل 3 دينار.", "بخصوص تحويل 3,000 دينار عراقي.",
+                                                  "بخصوص تحويل مبلغ 3000.")),
+                 ("دزيت خمسمية الف لصاحبي وما وصلت", ("بخصوص تحويل خمسمية دينار.",)))
+        for msg, drafts in cases:
+            for d in drafts:
+                self.assertTrue(pipeline.draft_unsupported_amounts(d, msg), (msg, d))
+        self.assertEqual(pipeline.draft_unsupported_amounts("بخصوص تحويل 3,000,000 دينار عراقي.",
+                                                            "حولت 3 مليون للمورد وما وصلت"), [])
+
+    def test_bare_amount_with_clear_context_accepted(self):
+        for msg, amount in (("حولت لصاحبي 85000 وما وصلت", 85000), ("ألاحظ إن 120000 انخصم مرتين", 120000),
+                            ("حوّلت 40000 لاخوي وما وصلت", 40000), ("شلون خصّيتني 60000 على البطاقة؟", 60000),
+                            ("التحويلة 300000 رقم العملية 51234987 ما وصلت", 300000)):
+            self.assertEqual(amount_check(msg, amount), (amount, []), msg)
+        self.assertEqual(pipeline.draft_unsupported_amounts("بخصوص تحويل مبلغ 85000 لأخوك.", "حولت ٨٥ الف لاخوي"), [])
+
+    def test_bare_amount_with_unclear_context_reviewed_not_accepted(self):
+        got, reasons = amount_check("عندي مشكلة ب 85000 من البارحة", 85000)
+        self.assertIsNone(got)
+        self.assertEqual(reasons, ["amount_context_unclear"])
+        out = run("عندي مشكلة ب 85000 من البارحة", category="other", amount_iqd=85000)
+        self.assertIsNone(out["amount"])
+        self.assertIn("amount_context_unclear", out["review_reasons"])
+        self.assertEqual(out["raw_output"]["amount_iqd"], 85000)
+
+    def test_non_money_numbers_not_amounts_in_message(self):
+        for msg, n in (("انتظرت 300 دقيقة وحولت 20 الف وما وصلت", 300),
+                       ("حولت 20 الف والعملية 88221100 ما وصلت", 88221100),
+                       ("بطاقتي اللي آخر ارقامها 4521 انرفضت وحاولت ادفع 20 الف", 4521)):
+            self.assertEqual(pipeline.message_amounts(msg), {20000}, msg)
+            got, reasons = amount_check(msg, n)
+            self.assertIsNone(got, msg)
+            self.assertIn("amount_not_in_message", reasons, msg)
+
+    def test_non_money_numbers_in_draft_not_rejected(self):
+        cases = (("حولت 20 الف وما وصلت", "راح نتابع خلال 300 يوم كحد أقصى."),
+                 ("حولت 20 الف والعملية 88221100 ما وصلت", "بخصوص العملية 88221100 بمبلغ 20,000 دينار عراقي."),
+                 ("حولت 20 الف والعملية 88221100 ما وصلت", "بخصوص 88221100، الحالة تحتاج متابعة."),
+                 ("بطاقتي اللي آخر ارقامها 4521 انرفضت", "بخصوص بطاقتك المنتهية بـ 4521."),
+                 ("حولت 20 الف بتاريخ 2026-10-05", "بخصوص التحويل بتاريخ 2026-10-05."))
+        for msg, d in cases:
+            self.assertEqual(pipeline.draft_unsupported_amounts(d, msg), [], (msg, d))
+
+    def test_non_money_number_presented_as_money_flagged(self):
+        msg = "حولت 20 الف والعملية 88221100 ما وصلت"
+        self.assertEqual(pipeline.draft_unsupported_amounts("بخصوص تحويل مبلغ 88221100.", msg), ["88221100"])
+
+
+class ApprovalUnitDroppedTests(unittest.TestCase):
+    MSG = "حولت ٢٥٠ الف لاخوي وما وصلت"
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.path = Path(self.tmp.name) / "t.db"
+        db.init(self.path)
+        rows, _ = ingest.parse_csv(f"complaint_id,received_at,message\nM2,2026-11-03 10:00,{self.MSG}\n".encode())
+        with db.connect(self.path) as conn:
+            db.create_batch(conn, "t.csv", rows, [])
+            conn.execute("UPDATE results SET status='done', category='transfer_failed', amount=250000 "
+                         "WHERE complaint_id = ?", (rows[0]["id"],))
+        self.cid = rows[0]["id"]
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_staff_edit_dropping_unit_blocked(self):
+        with db.connect(self.path) as conn:
+            for d in ("وصلتنا شكواك بخصوص تحويل 250 لأخوك. الحالة تحتاج متابعة من الموظف المختص.",
+                      "وصلتنا شكواك بخصوص تحويل 250 دينار. الحالة تحتاج متابعة من الموظف المختص."):
+                with self.assertRaises(db.DraftBlocked, msg=d):
+                    db.save_review(conn, self.cid, "approved", d)
+            db.save_review(conn, self.cid, "approved",
+                           "وصلتنا شكواك بخصوص تحويل 250,000 دينار عراقي. الحالة تحتاج متابعة من الموظف المختص.")
+
+    def test_regenerated_draft_dropping_unit_flagged(self):
+        with mock.patch.object(llm, "call", lambda *a, **k: llm.LLMResult(
+                None, "بخصوص تحويل 250 لأخوك، الحالة تحتاج متابعة من الموظف المختص.", 1, 1, 1)):
+            _, found = pipeline.regenerate_draft(self.cid, db_path=self.path)
+        self.assertTrue(any(f.startswith("مبلغ") and "250" in f for f in found), found)
+
+
 class ReasonLabelTests(unittest.TestCase):
     def test_labels_exist(self):
-        for k in ("amount_not_in_message", "multiple_amounts", "draft_unsupported_amount"):
+        for k in ("amount_not_in_message", "amount_context_unclear", "multiple_amounts", "draft_unsupported_amount"):
             self.assertIn(k, config.REVIEW_REASON_LABELS)
 
 

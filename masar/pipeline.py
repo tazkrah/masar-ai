@@ -86,10 +86,13 @@ def validate(extracted: dict, message: str, received_at: str | None):
         else:
             # المبلغ لازم يطابق مبلغ مكتوب بالرسالة بأي صيغة («خمسمية الف» = 500000). ما نصحح ولا نختار بداله.
             found = message_amounts(message, fields["transaction_id"])
-            if amount in found:
+            how = message_amount_context(message, amount, fields["transaction_id"])
+            if how == "clear":
                 fields["amount"] = amount
                 if len(found) > 1:
                     reasons.append("multiple_amounts")  # الموظف يتأكد إن المبلغ المختار يخص المشكلة الصحيحة
+            elif how == "unclear":
+                reasons.append("amount_context_unclear")  # رقم مجرد ما يبين إنه مبلغ: الموظف يقرر
             else:
                 reasons.append("amount_not_in_message")
 
@@ -261,53 +264,110 @@ _TX_NUMBER_RE = re.compile(r"(?:#|رقم\w*\s+(?:(?:ال)?(?:عملية|معام
 # كسر عشري ويا مرتبة: «1.5 مليون»، «2.5 مليون»
 _DECIMAL_SCALE_RE = re.compile(r"(?<![\d,،٬])(\d+)[.٫](\d+)\s*(مليون|الف|ألف)")
 
+# سياق الرقم المجرد (بلا ألف أو مليون أو دينار):
+# مو مالي: بعده وحدة وقت أو عدد («300 يوم»، «4 مرات»)، أو قبله كلمة تعريف («العملية 8822»، «المنتهية بـ 4521»).
+_NONMONEY_AFTER_RE = re.compile(
+    r"\s*(?:يوم|ايام|أيام|ساعة|ساعات|ساعه|دقيقة|دقيقه|دقايق|دقائق|ثانية|ثواني|مرة|مره|مرات|شهر|اشهر|أشهر|شهور|"
+    r"اسبوع|أسبوع|اسابيع|أسابيع|سنة|سنه|سنين|محاولة|محاولات|ارقام|أرقام|خانة|خانات)(?!\w)")
+_NONMONEY_BEFORE_RE = re.compile(
+    r"(?:^|[^\w])[وب]?(?:ال)?(?:عملية|عمليه|معاملة|معامله|حوالة|حواله|طلب|مرجع|ايصال|إيصال|وصل|كود|رمز|"
+    r"منتهية|منتهيه|تنتهي|ينتهي|آخر|اخر|ساعة|ساعه|(?:ارقام|أرقام|رقم)\w*)\s*(?:بـ?\s*)?[:#]?\s*$")
+# مالي: قبله أو بعده بكم كلمة فعل أو اسم فلوس («حولت لصاحبي 85000»، «250000 انخصم مرتين»).
+_MONEY_CUE_RE = re.compile(r"مبلغ|قيم|رصيد|فلوس|عمول|رسوم|خصم|خصي|حول|تحويل|دز|سحب|يداع|ودع|دفع|شحن|رجع|كاش|شراء|اشتر|صرف")
+_MONEY_BEFORE, _MONEY_AFTER = 3, 2
+_TASHKEEL_RE = re.compile(r"[\u064B-\u0652\u0640]")
 
-def _mask_non_amounts(text, txid=None):
-    """النص بعد تبديل التواريخ وأرقام العمليات بمسافات (نفس الطول)، حتى ما تنحسب مبالغ."""
-    t = (text or "").translate(ARABIC_DIGITS)
+
+def _non_amount_spans(t, txid=None):
     spans = [m.span() for rx in _NOT_AMOUNT_RES for m in rx.finditer(t)]
     spans += [m.span(1) for m in _TX_NUMBER_RE.finditer(t)]
     d = _digits_only(txid)
     if d:  # رقم العملية المسنود، حتى لو مكتوب بمسافات
         spans += [m.span() for m in re.finditer(r"(?<!\d)" + r"[ \-]?".join(d) + r"(?!\d)", t)]
-    for a, b in spans:
+    return spans
+
+
+def _mask_non_amounts(text, txid=None):
+    """النص بعد تبديل التواريخ وأرقام العمليات بمسافات (نفس الطول)، حتى ما تنحسب مبالغ."""
+    t = (text or "").translate(ARABIC_DIGITS)
+    for a, b in _non_amount_spans(t, txid):
         t = t[:a] + " " * (b - a) + t[b:]
     return t
 
 
-def _amount_mentions(text, txid=None):
-    """المبالغ المحتملة بالنص: [(النص، القيمة، شكل_مبلغ)]. شكل_مبلغ = بيه ألف/مليون/دينار أو مكتوب بالحروف.
+def _bare_context(t, start, end):
+    """سياق رقم مجرد: «nonmoney» أو «money» أو «unknown» (المعنى المالي مبهم)."""
+    if _NONMONEY_AFTER_RE.match(t, end) or _NONMONEY_BEFORE_RE.search(t[:start]):
+        return "nonmoney"
+    words = lambda x: re.findall(r"[^\W\d_]+", _TASHKEEL_RE.sub("", x))
+    near = words(t[:start])[-_MONEY_BEFORE:] + words(t[end:])[:_MONEY_AFTER]
+    return "money" if any(_MONEY_CUE_RE.search(w) for w in near) else "unknown"
 
-    بدون التواريخ وأرقام العمليات، وبس القيم ضمن مدى المبالغ المعقولة.
+
+def _amount_mentions(text, txid=None, keep_small=False):
+    """الأرقام اللي ممكن تكون مبالغ بالنص: [(النص، القيمة، السياق)].
+
+    السياق: «shaped» (بيه ألف/مليون/دينار أو مكتوب بالحروف)، أو سياق الرقم المجرد من _bare_context.
+    بدون التواريخ وأرقام العمليات. القيم برا مدى المبالغ تنشال، إلا keep_small للأرقام اللي ويا ألف/مليون/دينار
+    (بالمسودة «5 دينار» أو «3 دينار» بدل «3 مليون» غلط واضح).
     """
     t = _mask_non_amounts(text, txid)
     out = []
     for m in _DECIMAL_SCALE_RE.finditer(t):
         scale = 1_000_000 if m.group(3) == "مليون" else 1000
-        out.append((m.group(0), round(float(f"{m.group(1)}.{m.group(2)}") * scale), True))
+        out.append((m.group(0), round(float(f"{m.group(1)}.{m.group(2)}") * scale), "shaped"))
         t = t[:m.start()] + " " * (m.end() - m.start()) + t[m.end():]
     for m in _AMOUNT_RE.finditer(t):
-        out.append((m.group(0).strip(), _amount_value(m), bool(m.group(2) or m.group(3))))
-    out += [(str(v), v, True) for v in _word_numbers(t)]
-    return [x for x in out if AMOUNT_MIN <= x[1] <= AMOUNT_MAX]
+        ctx = "shaped" if (m.group(2) or m.group(3)) else _bare_context(t, m.start(), m.end())
+        out.append((m.group(0).strip(), _amount_value(m), ctx))
+    out += [(str(v), v, "shaped") for v in _word_numbers(t)]
+    return [x for x in out if AMOUNT_MIN <= x[1] <= AMOUNT_MAX or (keep_small and x[2] == "shaped" and x[1] >= 1)]
 
 
 def message_amounts(message, txid=None) -> set[int]:
-    """قيم المبالغ المكتوبة بالرسالة بأي صيغة: «٧٥ الف»، «75,000 دينار»، «مية وخمسين الف»، «مليون ونص»."""
-    return {v for _, v, _ in _amount_mentions(message, txid)}
+    """قيم المبالغ المكتوبة بالرسالة بأي صيغة: «٧٥ الف»، «75,000 دينار»، «مية وخمسين الف»، «مليون ونص».
+
+    الرقم المجرد اللي سياقه مو مالي («300 يوم»، «العملية 88221100») ما ينحسب.
+    """
+    return {v for _, v, ctx in _amount_mentions(message, txid) if ctx != "nonmoney"}
+
+
+def message_amount_context(message, amount, txid=None):
+    """شلون المبلغ مكتوب بالرسالة: «clear» (ويا ألف/دينار أو بالحروف أو سياق فلوس)، «unclear» (رقم مجرد
+    سياقه مبهم)، أو None إذا مو مكتوب."""
+    ctxs = {ctx for _, v, ctx in _amount_mentions(message, txid) if v == amount and ctx != "nonmoney"}
+    if not ctxs:
+        return None
+    return "clear" if ctxs & {"shaped", "money"} else "unclear"
+
+
+def _nonmoney_numbers(message, txid=None):
+    """الأرقام (مثل ما مكتوبة) اللي الرسالة تستخدمها لغير الفلوس: تواريخ، أرقام عمليات، أيام، آخر أرقام البطاقة."""
+    t = (message or "").translate(ARABIC_DIGITS)
+    out = set()
+    for a, b in _non_amount_spans(t, txid):
+        span = t[a:b]
+        out |= set(re.findall(r"\d+", span)) | {re.sub(r"\D", "", span)}
+    for raw, value, ctx in _amount_mentions(t, txid):
+        if ctx == "nonmoney":
+            out.add(str(value))
+    return out - {""}
 
 
 def draft_unsupported_amounts(draft: str, message: str, txid=None):
-    """مبالغ بالمسودة قيمتها مو مكتوبة بالرسالة. يرجع النصوص مثل ما انكتبت.
+    """مبالغ بالمسودة قيمتها مو مكتوبة بالرسالة كمبلغ. يرجع النصوص مثل ما انكتبت.
 
-    الرقم المجرد (بلا ألف أو دينار) اللي مكتوب حرفياً بالرسالة (مثلاً رقم عملية) ما ينحسب مبلغ.
+    الرقم ينقرا ويا وحدته: «٢٥٠ الف» بالرسالة = 250000، فـ«250» بالمسودة مو مسنود. الرقم المجرد يمر بس إذا
+    سياقه بالمسودة مو مالي («خلال 300 يوم»، «العملية 88221100»)، أو إذا الرسالة تستخدم نفس الرقم لغير الفلوس
+    (رقم عملية أو تاريخ) والمسودة ما تقدمه كمبلغ.
     """
     allowed = message_amounts(message, txid)
-    msg = (message or "").translate(ARABIC_DIGITS)
-    runs = set(re.findall(r"\d+", msg)) | set(re.findall(r"\d+", re.sub(r"(?<=\d)[\s\-](?=\d)", "", msg)))
+    nonmoney = _nonmoney_numbers(message, txid)
     out = []
-    for raw, value, shaped in _amount_mentions(draft, txid):
-        if value in allowed or (not shaped and str(value) in runs):
+    for raw, value, ctx in _amount_mentions(draft, txid, keep_small=True):
+        if ctx == "nonmoney" or value in allowed:
+            continue
+        if ctx == "unknown" and str(value) in nonmoney:
             continue
         if raw not in out:
             out.append(raw)
