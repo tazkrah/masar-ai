@@ -330,12 +330,16 @@ class DraftBlocked(ValueError):
 
 
 def save_review(conn, complaint_id, decision, final_draft, corrected_category=None, note=None):
-    """يحفظ قرار الموظف. الاعتماد يرفض (DraftBlocked) إذا النص النهائي بيه عبارة ممنوعة أو ادعاء إجراء أو طلب حساس."""
+    """يحفظ قرار الموظف. الاعتماد يرفض (DraftBlocked) إذا النص النهائي بيه عبارة ممنوعة أو ادعاء إجراء أو طلب حساس،
+    أو يطلب هوية أو هاتف أو بريد، أو يطلب معلومة مذكورة ومثبتة برسالة الزبون."""
     if decision == "approved":
         from . import pipeline  # هنا حتى ما يصير استيراد دائري
 
         row = conn.execute("SELECT message FROM complaints WHERE id = ?", (complaint_id,)).fetchone()
-        blockers = pipeline.approval_blockers(final_draft, row[0] if row else None)
+        res = conn.execute("SELECT transaction_id, amount, date FROM results WHERE complaint_id = ?",
+                           (complaint_id,)).fetchone()
+        fields = dict(zip(("transaction_id", "amount", "date"), res)) if res else None
+        blockers = pipeline.approval_blockers(final_draft, row[0] if row else None, fields)
         if not (final_draft or "").strip():
             blockers = ["المسودة فارغة"] + blockers
         if blockers:

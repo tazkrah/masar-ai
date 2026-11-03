@@ -85,8 +85,123 @@ def draft_unsupported_dates(draft: str, message: str, date_field: str | None):
 
 _NUM = r"[0-9٠-٩]+(?:[,،٬][0-9٠-٩]{3})*"  # الفاصلة تنحسب بس إذا بعدها 3 أرقام
 _AMOUNT_RE = re.compile(
-    rf"(?<![0-9٠-٩])({_NUM})(\s*(?:ألف|الف|آلاف|الاف))?(\s*(?:دينار عراقي|دينار|د\.ع\.?|IQD))?"
+    rf"(?<![0-9٠-٩])({_NUM})(\s*(?:ألف|الف|آلاف|الاف|مليون))?(\s*(?:دينار عراقي|دينار|د\.ع\.?|IQD))?"
 )
+
+
+def _amount_value(m):
+    """قيمة تطابق _AMOUNT_RE: 75000، 75,000، ٧٥ الف، 2 مليون."""
+    value = int(re.sub(r"[,،٬]", "", m.group(1)).translate(ARABIC_DIGITS))
+    if m.group(2):
+        value *= 1_000_000 if "مليون" in m.group(2) else 1000
+    return value
+
+
+# أرقام بالحروف (عراقي وفصحى): «مية وخمسين الف»، «ربع مليون»، «ثلاث ايام». ما تعتمد على جداول توليد البيانات.
+_UNIT_STEMS = {"ثلاث": 3, "ثلث": 3, "تلاث": 3, "تلت": 3, "اربع": 4, "أربع": 4, "خمس": 5, "ست": 6, "سبع": 7,
+               "ثمان": 8, "ثمن": 8, "تسع": 9}
+_NUM_WORDS = {
+    **{w: ("n", 1) for w in ("واحد", "وحدة", "وحده")},
+    **{w: ("n", 2) for w in ("اثنين", "اثنان", "إثنين", "ثنين")},
+    **{w: ("n", 3) for w in ("ثلاث", "ثلاثة", "ثلاثه", "تلاث", "تلاثة")},
+    **{w: ("n", 4) for w in ("اربع", "أربع", "اربعة", "أربعة", "اربعه")},
+    **{w: ("n", 5) for w in ("خمس", "خمسة", "خمسه")},
+    **{w: ("n", 6) for w in ("ستة", "سته")},  # «ست» و«ثمن» لحالهن غالباً مو أرقام (ست البيت، ثمن البطاقة)
+    **{w: ("n", 7) for w in ("سبع", "سبعة", "سبعه")},
+    **{w: ("n", 8) for w in ("ثمان", "ثماني", "ثمانية", "ثمانيه")},
+    **{w: ("n", 9) for w in ("تسع", "تسعة", "تسعه")},
+    **{w: ("n", 10) for w in ("عشر", "عشرة", "عشره")},
+    **{w: ("n", 11) for w in ("احدعش", "حدعش", "إحدعش")},
+    **{w: ("n", 12) for w in ("اثنعش", "طنعش", "اطنعش")},
+    "عشرين": ("n", 20),
+    **{w: ("n", 30) for w in ("ثلاثين", "ثلثين", "تلاثين", "تلثين")},
+    **{w: ("n", 40) for w in ("اربعين", "أربعين")},
+    "خمسين": ("n", 50), "ستين": ("n", 60), "سبعين": ("n", 70),
+    **{w: ("n", 80) for w in ("ثمانين", "ثمنين")},
+    "تسعين": ("n", 90),
+    **{w: ("h", 100) for w in ("مية", "ميه", "مئة", "مائة", "ميت")},
+    **{w: ("n", 200) for w in ("ميتين", "مئتين", "مائتين", "ميتان")},
+    **{w: ("s", 1000) for w in ("الف", "ألف", "آلاف", "الاف", "تالاف")},
+    **{w: ("d", 1000) for w in ("الفين", "ألفين")},  # المثنى: مرتين المرتبة
+    **{w: ("s", 1_000_000) for w in ("مليون", "ملايين")},
+    "مليونين": ("d", 1_000_000),
+    **{w: ("f", 0.5) for w in ("نص", "نصف")},
+    "ربع": ("f", 0.25),
+}
+_TEEN_RE = re.compile(r"(" + "|".join(_UNIT_STEMS) + r")[طت]عش")
+_HUNDREDS_RE = re.compile(r"(" + "|".join(_UNIT_STEMS) + r")(?:مية|ميه|مئة|مائة)")
+
+
+def _number_word(tok):
+    """(نوع، قيمة) لكلمة رقم، مع شيل «و» أو «ب» من أولها. None إذا مو رقم."""
+    for w in (tok, tok[1:] if tok[:1] in "وب" else None, tok[2:] if tok[:2] in ("وب", "بـ") else None):
+        if not w:
+            continue
+        if w in _NUM_WORDS:
+            return _NUM_WORDS[w]
+        if m := _TEEN_RE.fullmatch(w):
+            return "n", 10 + _UNIT_STEMS[m.group(1)]
+        if m := _HUNDREDS_RE.fullmatch(w):
+            return "n", 100 * _UNIT_STEMS[m.group(1)]
+    return None
+
+
+def _word_numbers(text):
+    """قيم الأرقام المكتوبة بالحروف. كل سلسلة كلمات أرقام متتالية = قيمة وحدة («مليون ونص» = 1500000)."""
+    vals = []
+    total = cur = last_scale = 0
+    active = after_digits = False
+
+    def flush():
+        v = total + cur
+        if active and v >= 1 and v == int(v):
+            vals.append(int(v))
+
+    for tok in re.findall(r"[0-9]+|[^\W\d_]+", text):
+        hit = None if tok.isdigit() else _number_word(tok)
+        if hit and hit[0] in "sd" and after_digits:  # «75 ألف» محسوبة من _AMOUNT_RE
+            hit = None
+        if not hit:
+            flush()
+            total = cur = last_scale = 0
+            active, after_digits = False, tok.isdigit()
+            continue
+        kind, v = hit
+        if kind == "n":
+            cur += v
+        elif kind == "h":
+            cur = cur * 100 if 0 < cur < 10 else cur + 100
+        elif kind in "sd":
+            total += (cur or (2 if kind == "d" else 1)) * v
+            cur, last_scale = 0, v
+        elif kind == "f":
+            if last_scale and not cur:  # «مليون ونص»
+                total += v * last_scale
+            else:  # «نص مليون»، «ربع مليون»
+                cur += v
+        active, after_digits = True, False
+    flush()
+    return vals
+
+
+def number_values(text):
+    """كل الأرقام بالنص كقيم: أرقام عادية، «٧٥ الف» = 75000، «مية وخمسين الف» = 150000، «ثلاث» = 3.
+
+    يرجع [(النص الأصلي أو القيمة، القيمة)] حتى نگدر نعرض الرقم مثل ما انكتب.
+    """
+    t = (text or "").translate(ARABIC_DIGITS)
+    out = []
+    for m in _AMOUNT_RE.finditer(t):
+        out.append((m.group(0).strip(), _amount_value(m)))
+    out += [(str(v), v) for v in _word_numbers(t)]
+    return out
+
+
+def _message_number_values(message):
+    """القيم اللي الرسالة تسندها: كل رقم مثل ما مكتوب (25 من «25 ألف» أو «يوم 25») وقيمته الكاملة."""
+    t = (message or "").translate(ARABIC_DIGITS)
+    vals = {int(n) for n in re.findall(r"\d+", re.sub(r"(?<=\d)[,،٬](?=\d{3})", "", t))}
+    return vals | {v for _, v in number_values(t)}
 
 
 def format_amounts_in_draft(draft: str, amount: int | None) -> str:
@@ -100,11 +215,9 @@ def format_amounts_in_draft(draft: str, amount: int | None) -> str:
 
     def repl(m):
         try:
-            value = int(re.sub(r"[,،٬]", "", m.group(1)).translate(ARABIC_DIGITS))
+            value = _amount_value(m)
         except ValueError:
             return m.group(0)
-        if m.group(2):
-            value *= 1000
         if value != amount:
             return m.group(0)
         trail = " " if m.group(0).endswith(" ") else ""
@@ -207,8 +320,8 @@ def promises_in_draft(draft: str, message: str | None = None):
 
 
 # طلب معلومة: جملة بيها فعل طلب (مو منفي) ومعلومة من القائمة، بأي ترتيب. التذكير ("ما راح نطلب الرمز") ما ينحسب.
-_ASK = (r"(?:زودنا|زوّدنا|تزويدنا|تزودنا|ترسل|ارسل|أرسل|دز|اكتب|شاركنا|مشارك|نحتاج|نطلب|ابعث|يرجى|نرجو|"
-        r"ممكن\s+(?:ت|تنطي|تعطي)|انطينا|عطينا)")
+_ASK = (r"(?:زودنا|زوّدنا|تزويدنا|تزودنا|ترسل|ارسل|أرسل|إرسال|ارسال|دز|اكتب|شاركنا|مشارك|نحتاج|نطلب|ابعث|يرجى|نرجو|"
+        r"ممكن\s+(?:ت|تنطي|تعطي)|انطينا|عطينا|ياريت|يا\s+ريت|تذكر|اذكر|تخبرنا|خبرنا)")
 _NEG = r"(?:ما|لا|مو|أبداً|ابداً|ماراح|ما راح)\s+(?:\S+\s+){0,2}$"
 _SENSITIVE = [r"رقم\s*الجهاز", r"IMEI", r"نسخة\s*(?:النظام|التطبيق)", r"الرمز\s*السري", r"الرقم\s*السري", r"\bPIN\b",
               r"رمز\s*التحقق", r"\bOTP\b", r"كلمة\s*(?:المرور|السر)", r"رقم\s*البطاقة\s*(?:الكامل|كامل)", r"CVV",
@@ -218,13 +331,17 @@ _CARD_NOT_ARRIVED = re.compile(r"بطاق\w*.{0,60}?(?:ما\s*(?:وصل|وصلت
                                r"(?:ما\s*(?:وصل|وصلت|وصلتني|وصلني|استلمت|اجت))\s*(?:\S+\s+){0,3}بطاق", re.S)
 
 
-def _requests(draft, pattern):
-    """الجمل اللي بيها فعل طلب غير منفي ومعلومة تطابق pattern."""
+def _requests(draft, pattern, after_ask=False):
+    """الجمل اللي بيها فعل طلب غير منفي ومعلومة تطابق pattern.
+
+    after_ask: المعلومة لازم تجي بعد فعل الطلب (حتى «بخصوص المبلغ 75,000… نحتاج رقم العملية» ما تنحسب طلب للمبلغ).
+    """
     hits = []
     for sent in re.split(r"[.!؟?\n]", draft or ""):
         if not re.search(pattern, sent, re.I):
             continue
-        if any(not re.search(_NEG, sent[: m.start()]) for m in re.finditer(_ASK, sent)):
+        asks = [m for m in re.finditer(_ASK, sent) if not re.search(_NEG, sent[: m.start()])]
+        if any(not after_ask or re.search(pattern, sent[m.end():], re.I) for m in asks):
             hits.append(sent.strip())
     return hits
 
@@ -232,6 +349,45 @@ def _requests(draft, pattern):
 def sensitive_requests(draft: str):
     """المسودة تطلب رقم الجهاز أو رمز أو كلمة مرور أو رقم البطاقة الكامل."""
     return _requests(draft, "|".join(_SENSITIVE))
+
+
+# معلومات ما تحتاجها هالنسخة أبداً: الهوية أو صورتها، رقم الهاتف، البريد الإلكتروني.
+_NOT_NEEDED = [r"هوي(?:ة|ه|تك)", r"(?:ال)?بطاقة\s*(?:ال)?(?:وطنية|موحدة|السكن)", r"جواز", r"مستمسك", r"صورة\s*شخصية",
+               r"سيلفي", r"رقم\s*(?:ال)?(?:هاتف|موبايل|تلفون|جوال)", r"رقمك", r"(?:ال)?بريد", r"[اإأ]يميل", r"e-?mail"]
+
+# المعلومة مذكورة كطلب، مو كتأكيد قيمة («المبلغ 75,000» أو «بتاريخ 2026-10-04» مو طلب).
+_STATED = r"(?!\s*(?:\S+\s+)?[0-9٠-٩])"
+_FIELD_ASK = {
+    "transaction_id": rf"رقم\s*(?:ال)?(?:عملية|معاملة|تحويل|تحويلة|حوالة){_STATED}",
+    "amount": rf"(?:ال)?مبلغ{_STATED}|قيمة\s*(?:ال)?(?:تحويل|عملية|سحب|إيداع|ايداع){_STATED}|(?:شكد|كم)\s*(?:حولت|سحبت|دفعت)",
+    "date": rf"(?:ال)?تاريخ{_STATED}|(?:وقت|يوم)\s*(?:ال)?(?:عملية|تحويل|سحب|إيداع|ايداع){_STATED}|[إا]يمتى|امتى|متى",
+}
+
+
+def not_needed_requests(draft: str):
+    """المسودة تطلب هوية أو صورتها، أو رقم هاتف، أو بريد إلكتروني."""
+    return _requests(draft, "|".join(_NOT_NEEDED))
+
+
+def grounded_fields(fields: dict | None, message: str | None):
+    """الحقول المستخرجة والمسنودة برسالة الزبون.
+
+    رقم العملية والتاريخ يمرون من validate بس إذا إلهم أصل بالرسالة. المبلغ لازم قيمته تنذكر بالرسالة بأي كتابة.
+    """
+    fields = fields or {}
+    out = []
+    if fields.get("transaction_id"):
+        out.append("transaction_id")
+    if fields.get("amount") is not None and fields["amount"] in _message_number_values(message):
+        out.append("amount")
+    if fields.get("date") and has_time_reference(message or ""):
+        out.append("date")
+    return out
+
+
+def known_info_requests(draft: str, fields: dict | None, message: str | None):
+    """المسودة ترجع تطلب معلومة الزبون كتبها ومثبتة بالحقول. يرجع [(الحقل، الجملة)]."""
+    return [(f, sent) for f in grounded_fields(fields, message) for sent in _requests(draft, _FIELD_ASK[f], after_ask=True)]
 
 
 def irrelevant_requests(draft: str, message: str):
@@ -262,40 +418,46 @@ _REASON_CLAIMS = {
 
 
 def reason_unsupported(reason: str, message: str):
-    """تفاصيل بالتبرير مو مذكورة بالرسالة: أرقام، أو ادعاء (خصم، نجاح، سرقة...) بلا أصل بالرسالة.
+    """تفاصيل بالتبرير مو مذكورة بالرسالة: أرقام (بقيمتها، مو بشكل كتابتها)، أو ادعاء (خصم، نجاح، سرقة...) بلا أصل بالرسالة.
 
     تشابه التبرير ويا مثال مو خطأ بحد ذاته؛ الخطأ هو المعلومة غير المسندة.
     """
     reason, msg = (reason or "").translate(ARABIC_DIGITS), (message or "").translate(ARABIC_DIGITS)
     found = []
-    msg_nums = set(re.findall(r"\d+", re.sub(r"[,،٬]", "", msg)))
-    for n in re.findall(r"\d+", re.sub(r"[,،٬]", "", reason)):
-        if n not in msg_nums:
-            found.append(f"رقم: {n}")
+    # نفس المبلغ بأي كتابة مسنود («75000» بالتبرير و«٧٥ الف» أو «خمسة وسبعين الف» بالرسالة). أي رقم ثاني مو مسنود.
+    msg_vals = _message_number_values(msg)
+    for raw, value in number_values(reason):
+        if value not in msg_vals and f"رقم: {raw}" not in found:
+            found.append(f"رقم: {raw}")
     for claim, roots in _REASON_CLAIMS.items():
         if claim in reason and not any(r in msg for r in roots):
             found.append(claim)
     return found
 
 
-def approval_blockers(draft: str, message: str | None = None) -> list[str]:
-    """أسباب تمنع اعتماد المسودة (الأصلية أو المعدّلة أو المعاد كتابتها): عبارة ممنوعة، وعد أو ادعاء إجراء، طلب معلومة حساسة.
+def approval_blockers(draft: str, message: str | None = None, fields: dict | None = None) -> list[str]:
+    """أسباب تمنع اعتماد المسودة (الأصلية أو المعدّلة أو المعاد كتابتها): عبارة ممنوعة، وعد أو ادعاء إجراء،
+    طلب معلومة حساسة أو ما نحتاجها، أو طلب معلومة الزبون كتبها أصلاً (fields: الحقول المحفوظة للشكوى).
 
     نفس القواعد اللي يستخدمها فحص المسودة بعد المودل (draft_review_reasons).
     """
     out = [f"عبارة ممنوعة: {p}" for p in check_draft(draft or "")]
     out += [f"وعد أو ادعاء إجراء: {p}" for p in promises_in_draft(draft, message)]
     out += [f"طلب معلومة حساسة: {s}" for s in sensitive_requests(draft)]
+    out += [f"طلب معلومة ما نحتاجها: {s}" for s in not_needed_requests(draft)]
+    out += [f"طلب {config.FIELD_LABELS[f]} وهو مذكور برسالة الزبون: {s}" for f, s in known_info_requests(draft, fields, message)]
     return out
 
 
-def draft_review_reasons(draft, message, date_field, category, secondary_category=None):
+def draft_review_reasons(draft, message, date_field, category, secondary_category=None, fields=None):
     """كل فحوصات المسودة بمكان واحد. يرجع أسباب المراجعة."""
     checks = [
         ("draft_forbidden_phrase", check_draft(draft)),
         ("draft_unsupported_date", draft_unsupported_dates(draft, message, date_field)),
         ("draft_unsupported_action", promises_in_draft(draft, message)),
         ("draft_sensitive_request", sensitive_requests(draft)),
+        ("draft_not_needed_request", not_needed_requests(draft)),
+        ("draft_known_info_request", known_info_requests(draft, fields, message)),
         ("draft_irrelevant_request", irrelevant_requests(draft, message)),
         ("draft_missing_issue", draft_missing_issue(draft, secondary_category, category)),
         ("draft_too_long", len(draft or "") > config.MAX_DRAFT_CHARS),
@@ -384,7 +546,7 @@ def analyze(complaint: dict, with_draft=True, provider=None, model=None, calls=N
         dres = llm.call(dsys, duser, max_tokens=config.MAX_TOKENS_DRAFT, provider=provider, model=model,
                         on_request=_logger(calls, "draft"))
         draft = format_amounts_in_draft(dres.text.strip(), fields["amount"])
-        reasons.extend(draft_review_reasons(draft, message, fields["date"], category, secondary))
+        reasons.extend(draft_review_reasons(draft, message, fields["date"], category, secondary, fields))
         out["draft"] = draft
         out["latency_ms"] += dres.latency_ms
         out["input_tokens"] = _sum_tokens(out["input_tokens"], dres.input_tokens)
@@ -500,4 +662,4 @@ def regenerate_draft(complaint_id, db_path=None):
             db.log_calls(conn, [{**c, "complaint_id": complaint_id, "provider": config.PROVIDER, "model": config.MODEL}
                                 for c in calls])
     draft = format_amounts_in_draft(res.text.strip(), r["amount"])
-    return draft, approval_blockers(draft, c["message"])
+    return draft, approval_blockers(draft, c["message"], fields)

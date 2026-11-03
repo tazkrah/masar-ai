@@ -335,6 +335,150 @@ class ApprovalTests(unittest.TestCase):
         self.assertEqual(found, [])
 
 
+class ReasonNumberValueTests(unittest.TestCase):
+    """الرقم بالتبرير ينقارن بقيمته: نفس المبلغ بأي كتابة مسنود، وأي رقم ثاني مو مسنود."""
+
+    def test_same_amount_any_spelling_supported(self):
+        cases = [
+            ("انسحب منه 40000 من الصراف.", "الصراف اكل مني ٤٠ الف اليوم"),
+            ("انسحب منه ٤٠ ألف من الصراف.", "الصراف اكل مني 40000 اليوم"),
+            ("حوّل 120,000 دينار وما وصلت.", "حولت 120000 لابن عمي وما وصلت"),
+            ("دفع رسوم 35000 على البطاقة.", "انخصم مني خمسة وثلاثين الف رسوم بطاقة"),
+            ("عمولة 300000 على الإيداع.", "الوكيل اخذ ثلاث مية الف عمولة"),
+            ("حوّل 2500000 بالغلط.", "حولت مليونين ونص لرقم غلط"),
+            ("حوّل 1500000 بالغلط.", "حولت مليون ونص لرقم غلط"),
+            ("حوّل 250000 وما وصلت.", "حولت ربع مليون وما وصلت"),
+            ("المشكلة من 4 أيام.", "صارلي اربع ايام انتظر"),
+            ("المشكلة من خمس أيام.", "صارلي 5 ايام انتظر"),
+        ]
+        for reason, msg in cases:
+            self.assertEqual(pipeline.reason_unsupported(reason, msg), [], (reason, msg))
+
+    def test_unsupported_numbers_still_flagged(self):
+        cases = [
+            ("انسحب منه 45000 من الصراف.", "الصراف اكل مني ٤٠ الف اليوم"),
+            ("انسحب منه 40 من الصراف.", "الصراف اكل مني فلوس اليوم"),
+            ("حوّل 35000 وما وصلت.", "حولت خمسة وعشرين الف وما وصلت"),
+            ("حوّل 1500000 بالغلط.", "حولت مليون لرقم غلط"),
+            ("المشكلة من 3 أيام.", "صارلي اربع ايام انتظر"),
+            ("حوّل خمسين ألف وما وصلت.", "حولت فلوس وما وصلت"),
+            ("الخصم صار 2026-10-12.", "انخصم مني مبلغ قبل كم يوم"),
+        ]
+        for reason, msg in cases:
+            self.assertTrue(any(f.startswith("رقم") for f in pipeline.reason_unsupported(reason, msg)), (reason, msg))
+
+    def test_number_words_parsed(self):
+        vals = lambda t: [v for _, v in pipeline.number_values(t)]
+        self.assertEqual(vals("دفعت سبعطعش الف"), [17000])
+        self.assertEqual(vals("نص مليون"), [500000])
+        self.assertEqual(vals("ميتين وخمسين الف"), [250000])
+        self.assertEqual(vals("٩٠ الف و٣ مليون"), [90000, 3000000])
+        self.assertEqual(vals("ثمن البطاقة غالي"), [])
+
+    def test_draft_amount_unified_with_million(self):
+        self.assertEqual(pipeline.format_amounts_in_draft("المبلغ 3 مليون وصلنا.", 3_000_000),
+                         "المبلغ 3,000,000 دينار عراقي وصلنا.")
+
+
+class DraftInfoRequestTests(unittest.TestCase):
+    MSG = "حولت 60 الف لصاحبي بتاريخ 2026-10-20 ورقم العملية 73315098 وما وصله"
+    FIELDS = {"transaction_id": "73315098", "amount": 60000, "date": "2026-10-20"}
+
+    def test_identity_phone_email_flagged(self):
+        for d in ("حتى نكمل، يرجى إرسال صورة الهوية.", "ممكن تزودنا برقم هاتفك المسجل؟",
+                  "إذا عندك البطاقة الوطنية أو جواز السفر، دزلنا صورتها.", "اكتبلنا الإيميل المرتبط بالحساب.",
+                  "نحتاج رقم الموبايل والبريد الإلكتروني حتى نتحقق.", "يا ريت ترسل سيلفي ويا المستمسك."):
+            self.assertTrue(pipeline.not_needed_requests(d), d)
+            self.assertIn("draft_not_needed_request", pipeline.draft_review_reasons(d, "رسالة", None, "other"), d)
+
+    def test_identity_mention_without_request_ok(self):
+        for d in ("ما نحتاج منك هوية أو رقم هاتف.", "لا ترسل صورة الهوية لأي أحد.",
+                  "وصلتنا شكواك بخصوص تعديل الاسم. الحالة تحتاج متابعة من الموظف المختص."):
+            self.assertEqual(pipeline.not_needed_requests(d), [], d)
+
+    def test_asking_again_for_grounded_fields_flagged(self):
+        for d, field in (("ممكن تزودنا برقم العملية؟", "transaction_id"),
+                         ("يرجى تزويدنا بالمبلغ اللي حولته.", "amount"),
+                         ("ياريت تذكر تاريخ التحويل بالتقريب.", "date"),
+                         ("نحتاج منك رقم العملية والمبلغ والتاريخ.", "date")):
+            hits = pipeline.known_info_requests(d, self.FIELDS, self.MSG)
+            self.assertIn(field, [f for f, _ in hits], d)
+
+    def test_restating_grounded_fields_ok(self):
+        d = ("وصلتنا شكواك بخصوص التحويل رقم العملية 73315098 بمبلغ 60,000 دينار عراقي بتاريخ 2026-10-20. "
+             "الحالة تحتاج متابعة من الموظف المختص، ويرجى عدم إعادة نفس التحويل.")
+        self.assertEqual(pipeline.known_info_requests(d, self.FIELDS, self.MSG), [])
+        self.assertNotIn("draft_known_info_request",
+                         pipeline.draft_review_reasons(d, self.MSG, "2026-10-20", "transfer_failed", fields=self.FIELDS))
+
+    def test_missing_field_request_ok(self):
+        msg = "حولت 60 الف لصاحبي البارحة وما وصله"
+        fields = {"transaction_id": None, "amount": 60000, "date": "2026-11-01"}
+        d = "بخصوص المبلغ 60,000 دينار عراقي، ممكن تزودنا برقم العملية من سجل العمليات؟"
+        self.assertEqual(pipeline.known_info_requests(d, fields, msg), [])
+
+    def test_amount_not_in_message_is_not_grounded(self):
+        """مبلغ طلّعه الموديل وما إله أصل بالرسالة ما ينحسب معلومة مثبتة، فطلبه مسموح."""
+        msg = "حولت فلوس لصاحبي البارحة وما وصله"
+        self.assertNotIn("amount", pipeline.grounded_fields({"amount": 60000}, msg))
+        self.assertEqual(pipeline.known_info_requests("يرجى تزويدنا بالمبلغ.", {"amount": 60000}, msg), [])
+
+    def test_analyze_flags_known_info_request(self):
+        ans = {**ANS, "transaction_id": "73315098", "amount_iqd": 60000, "date": "2026-10-20"}
+        out, _ = run_analyze(self.MSG, ans, "وصلتنا شكوى التحويل. الحالة تحتاج متابعة من الموظف المختص. "
+                                            "ممكن تزودنا برقم العملية؟")
+        self.assertIn("draft_known_info_request", out["review_reasons"])
+        self.assertEqual(out["needs_review"], 1)
+
+
+class ApprovalInfoRequestTests(unittest.TestCase):
+    """الاعتماد بعد تعديل الموظف يطبق نفس فحص طلب المعلومات، ويقرأ الحقول المحفوظة للشكوى."""
+
+    MSG = "حولت ٨٥ الف لرقم غلط اليوم ورقم العملية 66120934"
+
+    def setUp(self):
+        import tempfile
+        from masar import db, ingest
+        self.db = db
+        self.tmp = tempfile.TemporaryDirectory()
+        self.path = Path(self.tmp.name) / "t.db"
+        db.init(self.path)
+        rows, _ = ingest.parse_csv(f"complaint_id,received_at,message\nR1,2026-11-02 10:00,{self.MSG}\n".encode())
+        with db.connect(self.path) as conn:
+            db.create_batch(conn, "t.csv", rows, [])
+            conn.execute("UPDATE results SET status='done', category='wrong_recipient', transaction_id='66120934', "
+                         "amount=85000, date='2026-11-02' WHERE complaint_id = ?", (rows[0]["id"],))
+        self.cid = rows[0]["id"]
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def approve(self, text):
+        with self.db.connect(self.path) as conn:
+            self.db.save_review(conn, self.cid, "approved", text)
+
+    def test_edited_draft_with_bad_requests_blocked(self):
+        base = "وصلتنا شكواك بخصوص التحويل الخاطئ. الحالة تحتاج متابعة من الموظف المختص."
+        for extra in (" يرجى إرسال صورة الهوية.", " ممكن تزودنا برقم هاتفك؟", " ممكن تزودنا برقم العملية؟",
+                      " يرجى تزويدنا بالمبلغ."):
+            with self.assertRaises(self.db.DraftBlocked, msg=extra):
+                self.approve(base + extra)
+
+    def test_clean_edit_approved(self):
+        good = ("وصلتنا شكواك بخصوص تحويل 85,000 دينار عراقي برقم العملية 66120934 لرقم غلط. "
+                "الحالة تحتاج متابعة من الموظف المختص.")
+        self.approve(good)
+        with self.db.connect(self.path) as conn:
+            r = conn.execute("SELECT decision FROM reviews WHERE complaint_id = ?", (self.cid,)).fetchone()
+        self.assertEqual(r[0], "approved")
+
+    def test_regenerated_draft_checked_against_fields(self):
+        with mock.patch.object(llm, "call", lambda *a, **k: llm.LLMResult(
+                None, "الحالة تحتاج متابعة من الموظف المختص. ممكن تزودنا برقم العملية؟", 1, 1, 1)):
+            _, found = pipeline.regenerate_draft(self.cid, db_path=self.path)
+        self.assertTrue(any("رقم العملية" in f for f in found), found)
+
+
 class ReportTests(unittest.TestCase):
     LABELS = {
         "A": {"category": "transfer_failed", "secondary_category": "", "priority": "medium",

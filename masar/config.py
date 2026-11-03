@@ -95,6 +95,8 @@ REVIEW_REASON_LABELS = {
     "draft_unsupported_action": "المسودة توعد بإحالة أو متابعة أو رد، أو تدّعي إجراء ما انعمل",
     "draft_sensitive_request": "المسودة تطلب معلومة حساسة أو ما إلها حاجة",
     "draft_irrelevant_request": "المسودة تطلب معلومة ما تناسب الحالة",
+    "draft_not_needed_request": "المسودة تطلب هوية أو صورتها أو رقم هاتف أو بريد، وهالنسخة ما تحتاجها",
+    "draft_known_info_request": "المسودة تطلب معلومة الزبون كتبها أصلاً برسالته",
     "draft_missing_issue": "الرسالة بيها أكثر من مشكلة والمسودة ما ذكرت الثانية",
     "draft_too_long": "المسودة أطول من اللازم",
 }
