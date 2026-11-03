@@ -57,15 +57,15 @@
         "W10"
       ],
       "by_category": {
-        "other": 35,
-        "card": 30,
-        "agent_dispute": 25,
-        "transfer_failed": 35,
-        "account_access": 25,
-        "wrong_recipient": 30
+        "other": 53,
+        "card": 29,
+        "agent_dispute": 16,
+        "transfer_failed": 34,
+        "account_access": 23,
+        "wrong_recipient": 25
       },
       "sha256": "1f39f5607cbce41831f65ae769fe6ed7aeea07162d98e22965e97280470639ae",
-      "labels_sha256": "ca2f6ce0f703c88724b4b5f35c33ca6bf9e13b04e60920953ee9a9f3f9f47b84"
+      "labels_sha256": "c6e99f916e88c5abb2d3c43e4d56f26ab16a19dae778be008cd5b1785e56380b"
     },
     "calib": {
       "rows": 60,
@@ -263,7 +263,520 @@
           }
         }
       ]
+    },
+    {
+      "data_version": 5,
+      "date": "2026-11-03T17:44:59",
+      "split": "dev",
+      "messages_changed": [],
+      "labels_changed": true,
+      "method": "manual review of message text and meaning (scripts/label_corrections.py)",
+      "reason": "الإجابة الصحيحة تستند لنص الرسالة ومعناها، مو لتفاصيل السيناريو اللي ما ظهرت بالرسالة. الغموض «أخرى» ويا مراجعة، الشكوى المالية الغامضة متوسطة كحد أدنى، العملية غير المصرح بها خطر وأمن الحسابات، الإيداع بدون وكيل مو خلاف وكيل، اليوم بدون شهر بعد يوم الاستلام يبقى فارغ. القرار مستقل عن جواب الموديل.",
+      "new_columns": [
+        "accepted_swap",
+        "review_note"
+      ],
+      "labels_sha256_before": "ca2f6ce0f703c88724b4b5f35c33ca6bf9e13b04e60920953ee9a9f3f9f47b84",
+      "labels_sha256_after": "c6e99f916e88c5abb2d3c43e4d56f26ab16a19dae778be008cd5b1785e56380b",
+      "label_changes": [
+        {
+          "id": "DEV-T08-2",
+          "from": {
+            "review_note": "",
+            "category": "transfer_failed",
+            "department": "العمليات والتحويلات",
+            "expect_review": "0",
+            "hard_type": ""
+          },
+          "to": {
+            "review_note": "يذكر حوالة ورقمها ويطلب مراجعة بدون ما يگول شنو المشكلة",
+            "category": "other",
+            "department": "خدمة الزبائن العامة",
+            "expect_review": "1",
+            "hard_type": "unclear_message"
+          },
+          "reason": "النص ما يكفي لتحديد الفئة: يذكر حوالة ورقمها ويطلب مراجعة بدون ما يگول شنو المشكلة"
+        },
+        {
+          "id": "DEV-W05-5",
+          "from": {
+            "review_note": "",
+            "category": "wrong_recipient",
+            "priority": "high",
+            "department": "النزاعات والاسترداد",
+            "expect_review": "0",
+            "hard_type": ""
+          },
+          "to": {
+            "review_note": "يطلب رجوع فلوس بدون أي تفصيل عن العملية",
+            "category": "other",
+            "priority": "medium",
+            "department": "خدمة الزبائن العامة",
+            "expect_review": "1",
+            "hard_type": "unclear_message"
+          },
+          "reason": "النص ما يكفي لتحديد الفئة: يطلب رجوع فلوس بدون أي تفصيل عن العملية"
+        },
+        {
+          "id": "DEV-G08-2",
+          "from": {
+            "accepted_swap": "0"
+          },
+          "to": {
+            "accepted_swap": "1"
+          },
+          "reason": "المشكلتين واضحة بالنص (إيداع عند الوكيل ما نزل + تحويل فشل) وبالاثنين فلوس، فقاعدة «الأهم = اللي بيها فلوس أو خطر أكثر» ما تحسم الترتيب. نقبل agent_dispute أو transfer_failed كأساسية."
+        },
+        {
+          "id": "DEV-W05-1",
+          "from": {
+            "review_note": "",
+            "category": "wrong_recipient",
+            "priority": "high",
+            "department": "النزاعات والاسترداد",
+            "expect_review": "0",
+            "hard_type": ""
+          },
+          "to": {
+            "review_note": "يطلب رجوع فلوس تحويل بدون ذكر شنو صار (فشل أو مستلم غلط)",
+            "category": "other",
+            "priority": "medium",
+            "department": "خدمة الزبائن العامة",
+            "expect_review": "1",
+            "hard_type": "unclear_message"
+          },
+          "reason": "النص ما يكفي لتحديد الفئة: يطلب رجوع فلوس تحويل بدون ذكر شنو صار (فشل أو مستلم غلط)"
+        },
+        {
+          "id": "DEV-G08-4",
+          "from": {
+            "accepted_swap": "0"
+          },
+          "to": {
+            "accepted_swap": "1"
+          },
+          "reason": "المشكلتين واضحة بالنص (إيداع عند الوكيل ما نزل + تحويل فشل) وبالاثنين فلوس، فقاعدة «الأهم = اللي بيها فلوس أو خطر أكثر» ما تحسم الترتيب. نقبل agent_dispute أو transfer_failed كأساسية."
+        },
+        {
+          "id": "DEV-K04-1",
+          "from": {
+            "review_note": "",
+            "date": "2026-09-24",
+            "expect_review": "0",
+            "hard_type": ""
+          },
+          "to": {
+            "review_note": "اليوم مذكور بدون شهر وهو بعد يوم الاستلام، فالشهر مو محسوم",
+            "date": "",
+            "expect_review": "1",
+            "hard_type": "ambiguous_date"
+          },
+          "reason": "اليوم مذكور بدون شهر وهو بعد يوم الاستلام، فالشهر مو محسوم. ما نفترض الشهر السابق."
+        },
+        {
+          "id": "DEV-G01-4",
+          "from": {
+            "review_note": "",
+            "category": "agent_dispute",
+            "department": "شبكة الوكلاء",
+            "expect_review": "0",
+            "hard_type": ""
+          },
+          "to": {
+            "review_note": "إيداع ما نزل بدون ذكر وين انعمل (وكيل أو غيره)",
+            "category": "other",
+            "department": "خدمة الزبائن العامة",
+            "expect_review": "1",
+            "hard_type": "unclear_message"
+          },
+          "reason": "النص ما يكفي لتحديد الفئة: إيداع ما نزل بدون ذكر وين انعمل (وكيل أو غيره)"
+        },
+        {
+          "id": "DEV-W01-4",
+          "from": {
+            "review_note": "",
+            "date": "2026-09-26",
+            "expect_review": "0",
+            "hard_type": ""
+          },
+          "to": {
+            "review_note": "اليوم مذكور بدون شهر وهو بعد يوم الاستلام، فالشهر مو محسوم",
+            "date": "",
+            "expect_review": "1",
+            "hard_type": "ambiguous_date"
+          },
+          "reason": "اليوم مذكور بدون شهر وهو بعد يوم الاستلام، فالشهر مو محسوم. ما نفترض الشهر السابق."
+        },
+        {
+          "id": "DEV-G03-3",
+          "from": {
+            "review_note": "",
+            "category": "agent_dispute",
+            "department": "شبكة الوكلاء",
+            "expect_review": "0",
+            "hard_type": ""
+          },
+          "to": {
+            "review_note": "سحب ما وصل كاشه بدون ذكر وكيل أو صراف",
+            "category": "other",
+            "department": "خدمة الزبائن العامة",
+            "expect_review": "1",
+            "hard_type": "unclear_message"
+          },
+          "reason": "النص ما يكفي لتحديد الفئة: سحب ما وصل كاشه بدون ذكر وكيل أو صراف"
+        },
+        {
+          "id": "DEV-A08-4",
+          "from": {
+            "review_note": "",
+            "category": "account_access",
+            "expect_review": "0",
+            "hard_type": ""
+          },
+          "to": {
+            "review_note": "سحب يصرّح إنه صار بدون علمه، بدون ذكر شلون صار (دخول للحساب أو بطاقة)",
+            "category": "other",
+            "expect_review": "1",
+            "hard_type": "unclear_message"
+          },
+          "reason": "النص ما يكفي لتحديد الفئة: سحب يصرّح إنه صار بدون علمه، بدون ذكر شلون صار (دخول للحساب أو بطاقة)"
+        },
+        {
+          "id": "DEV-G08-5",
+          "from": {
+            "review_note": "",
+            "category": "agent_dispute",
+            "secondary_category": "transfer_failed",
+            "department": "شبكة الوكلاء"
+          },
+          "to": {
+            "review_note": "التحويل الفاشل واضح؛ الإيداع ما نزل بدون ذكر وكيل أو محل، فنوعه غامض",
+            "category": "transfer_failed",
+            "secondary_category": "other",
+            "department": "العمليات والتحويلات"
+          },
+          "reason": "الإيداع ما يبين إنه عند وكيل، فما نثبت «خلاف مع الوكيل». التحويل الفاشل واضح فهو الأساسي، والإيداع مشكلة ثانية غامضة (أخرى) ويا مراجعة."
+        },
+        {
+          "id": "DEV-A08-1",
+          "from": {
+            "review_note": "",
+            "category": "account_access",
+            "expect_review": "0",
+            "hard_type": ""
+          },
+          "to": {
+            "review_note": "سحب يصرّح إنه مو هو سواه، بدون ذكر شلون صار (دخول للحساب أو بطاقة)",
+            "category": "other",
+            "expect_review": "1",
+            "hard_type": "unclear_message"
+          },
+          "reason": "النص ما يكفي لتحديد الفئة: سحب يصرّح إنه مو هو سواه، بدون ذكر شلون صار (دخول للحساب أو بطاقة)"
+        },
+        {
+          "id": "DEV-G02-4",
+          "from": {
+            "review_note": "",
+            "category": "agent_dispute",
+            "department": "شبكة الوكلاء",
+            "expect_review": "0",
+            "hard_type": ""
+          },
+          "to": {
+            "review_note": "عملية ما نجحت بدون ذكر نوعها ولا وين صارت",
+            "category": "other",
+            "department": "خدمة الزبائن العامة",
+            "expect_review": "1",
+            "hard_type": "unclear_message"
+          },
+          "reason": "النص ما يكفي لتحديد الفئة: عملية ما نجحت بدون ذكر نوعها ولا وين صارت"
+        },
+        {
+          "id": "DEV-T04-2",
+          "from": {
+            "review_note": "",
+            "category": "transfer_failed",
+            "department": "العمليات والتحويلات",
+            "expect_review": "0",
+            "hard_type": ""
+          },
+          "to": {
+            "review_note": "خصم مكرر بدون ذكر نوع العملية (تحويل، شراء، سحب)",
+            "category": "other",
+            "department": "خدمة الزبائن العامة",
+            "expect_review": "1",
+            "hard_type": "unclear_message"
+          },
+          "reason": "النص ما يكفي لتحديد الفئة: خصم مكرر بدون ذكر نوع العملية (تحويل، شراء، سحب)"
+        },
+        {
+          "id": "DEV-A10-1",
+          "from": {
+            "review_note": "",
+            "priority": "low"
+          },
+          "to": {
+            "review_note": "رصيده ما يطابق التحويلات بدون تحديد عملية",
+            "priority": "medium"
+          },
+          "reason": "شكوى مالية غامضة (الرصيد ما يطابق التحويلات): أولوية متوسطة كحد أدنى بدل منخفضة."
+        },
+        {
+          "id": "DEV-G02-2",
+          "from": {
+            "review_note": "",
+            "category": "agent_dispute",
+            "department": "شبكة الوكلاء",
+            "expect_review": "0",
+            "hard_type": ""
+          },
+          "to": {
+            "review_note": "عمولة على سحب بدون ذكر وين صار السحب (وكيل أو صراف)",
+            "category": "other",
+            "department": "خدمة الزبائن العامة",
+            "expect_review": "1",
+            "hard_type": "unclear_message"
+          },
+          "reason": "النص ما يكفي لتحديد الفئة: عمولة على سحب بدون ذكر وين صار السحب (وكيل أو صراف)"
+        },
+        {
+          "id": "DEV-G08-3",
+          "from": {
+            "review_note": "",
+            "category": "agent_dispute",
+            "secondary_category": "transfer_failed",
+            "department": "شبكة الوكلاء"
+          },
+          "to": {
+            "review_note": "التحويل الفاشل واضح؛ الإيداع ما نزل بدون ذكر وكيل أو محل، فنوعه غامض",
+            "category": "transfer_failed",
+            "secondary_category": "other",
+            "department": "العمليات والتحويلات"
+          },
+          "reason": "الإيداع ما يبين إنه عند وكيل، فما نثبت «خلاف مع الوكيل». التحويل الفاشل واضح فهو الأساسي، والإيداع مشكلة ثانية غامضة (أخرى) ويا مراجعة."
+        },
+        {
+          "id": "DEV-G03-4",
+          "from": {
+            "review_note": "",
+            "category": "agent_dispute",
+            "department": "شبكة الوكلاء",
+            "expect_review": "0",
+            "hard_type": ""
+          },
+          "to": {
+            "review_note": "سحب ما وصل كاشه بدون ذكر وكيل أو صراف",
+            "category": "other",
+            "department": "خدمة الزبائن العامة",
+            "expect_review": "1",
+            "hard_type": "unclear_message"
+          },
+          "reason": "النص ما يكفي لتحديد الفئة: سحب ما وصل كاشه بدون ذكر وكيل أو صراف"
+        },
+        {
+          "id": "DEV-T04-3",
+          "from": {
+            "review_note": "",
+            "category": "transfer_failed",
+            "department": "العمليات والتحويلات",
+            "expect_review": "0",
+            "hard_type": ""
+          },
+          "to": {
+            "review_note": "خصم مكرر بدون ذكر نوع العملية (تحويل، شراء، سحب)",
+            "category": "other",
+            "department": "خدمة الزبائن العامة",
+            "expect_review": "1",
+            "hard_type": "unclear_message"
+          },
+          "reason": "النص ما يكفي لتحديد الفئة: خصم مكرر بدون ذكر نوع العملية (تحويل، شراء، سحب)"
+        },
+        {
+          "id": "DEV-G07-3",
+          "from": {
+            "review_note": "",
+            "date": "2026-09-27",
+            "expect_review": "0",
+            "hard_type": ""
+          },
+          "to": {
+            "review_note": "اليوم مذكور بدون شهر وهو بعد يوم الاستلام، فالشهر مو محسوم",
+            "date": "",
+            "expect_review": "1",
+            "hard_type": "ambiguous_date"
+          },
+          "reason": "اليوم مذكور بدون شهر وهو بعد يوم الاستلام، فالشهر مو محسوم. ما نفترض الشهر السابق."
+        },
+        {
+          "id": "DEV-W08-2",
+          "from": {
+            "category": "wrong_recipient",
+            "department": "النزاعات والاسترداد"
+          },
+          "to": {
+            "category": "transfer_failed",
+            "department": "العمليات والتحويلات"
+          },
+          "reason": "النص يگول «التحويل ما وصل» وما يذكر رقم أو حساب غلط: تعثر تحويل، والأولوية عالية بسبب المبلغ."
+        },
+        {
+          "id": "DEV-T04-4",
+          "from": {
+            "review_note": "",
+            "category": "transfer_failed",
+            "department": "العمليات والتحويلات",
+            "expect_review": "0",
+            "hard_type": ""
+          },
+          "to": {
+            "review_note": "خصم مكرر بدون ذكر نوع العملية (تحويل، شراء، سحب)",
+            "category": "other",
+            "department": "خدمة الزبائن العامة",
+            "expect_review": "1",
+            "hard_type": "unclear_message"
+          },
+          "reason": "النص ما يكفي لتحديد الفئة: خصم مكرر بدون ذكر نوع العملية (تحويل، شراء، سحب)"
+        },
+        {
+          "id": "DEV-K08-4",
+          "from": {
+            "review_note": "",
+            "category": "card",
+            "department": "البطاقات",
+            "expect_review": "0",
+            "hard_type": ""
+          },
+          "to": {
+            "review_note": "خصم ما يعرف سببه بدون ذكر بطاقة أو رسوم أو نوع العملية",
+            "category": "other",
+            "department": "خدمة الزبائن العامة",
+            "expect_review": "1",
+            "hard_type": "unclear_message"
+          },
+          "reason": "النص ما يكفي لتحديد الفئة: خصم ما يعرف سببه بدون ذكر بطاقة أو رسوم أو نوع العملية"
+        },
+        {
+          "id": "DEV-W08-4",
+          "from": {
+            "review_note": "",
+            "category": "wrong_recipient",
+            "department": "النزاعات والاسترداد",
+            "expect_review": "0",
+            "hard_type": ""
+          },
+          "to": {
+            "review_note": "يذكر تحويل ورقمه ومستعجل بدون ما يگول شنو المشكلة",
+            "category": "other",
+            "department": "خدمة الزبائن العامة",
+            "expect_review": "1",
+            "hard_type": "unclear_message"
+          },
+          "reason": "النص ما يكفي لتحديد الفئة: يذكر تحويل ورقمه ومستعجل بدون ما يگول شنو المشكلة"
+        },
+        {
+          "id": "DEV-G01-2",
+          "from": {
+            "review_note": "",
+            "category": "agent_dispute",
+            "department": "شبكة الوكلاء",
+            "expect_review": "0",
+            "hard_type": ""
+          },
+          "to": {
+            "review_note": "إيداع ما نزل بدون ذكر وين انعمل (وكيل أو غيره)",
+            "category": "other",
+            "department": "خدمة الزبائن العامة",
+            "expect_review": "1",
+            "hard_type": "unclear_message"
+          },
+          "reason": "النص ما يكفي لتحديد الفئة: إيداع ما نزل بدون ذكر وين انعمل (وكيل أو غيره)"
+        },
+        {
+          "id": "DEV-W08-3",
+          "from": {
+            "review_note": "",
+            "category": "wrong_recipient",
+            "department": "النزاعات والاسترداد",
+            "expect_review": "0",
+            "hard_type": ""
+          },
+          "to": {
+            "review_note": "يذكر تحويل ورقمه ومستعجل بدون ما يگول شنو المشكلة",
+            "category": "other",
+            "department": "خدمة الزبائن العامة",
+            "expect_review": "1",
+            "hard_type": "unclear_message"
+          },
+          "reason": "النص ما يكفي لتحديد الفئة: يذكر تحويل ورقمه ومستعجل بدون ما يگول شنو المشكلة"
+        },
+        {
+          "id": "DEV-W07-3",
+          "from": {
+            "review_note": "",
+            "date": "2026-09-27",
+            "expect_review": "0",
+            "hard_type": ""
+          },
+          "to": {
+            "review_note": "اليوم مذكور بدون شهر وهو بعد يوم الاستلام، فالشهر مو محسوم",
+            "date": "",
+            "expect_review": "1",
+            "hard_type": "ambiguous_date"
+          },
+          "reason": "اليوم مذكور بدون شهر وهو بعد يوم الاستلام، فالشهر مو محسوم. ما نفترض الشهر السابق."
+        },
+        {
+          "id": "DEV-T04-5",
+          "from": {
+            "review_note": "",
+            "category": "transfer_failed",
+            "department": "العمليات والتحويلات",
+            "expect_review": "0",
+            "hard_type": ""
+          },
+          "to": {
+            "review_note": "خصم مكرر بدون ذكر نوع العملية (تحويل، شراء، سحب)",
+            "category": "other",
+            "department": "خدمة الزبائن العامة",
+            "expect_review": "1",
+            "hard_type": "unclear_message"
+          },
+          "reason": "النص ما يكفي لتحديد الفئة: خصم مكرر بدون ذكر نوع العملية (تحويل، شراء، سحب)"
+        },
+        {
+          "id": "DEV-T08-5",
+          "from": {
+            "review_note": "",
+            "date": "2026-09-24",
+            "expect_review": "0",
+            "hard_type": ""
+          },
+          "to": {
+            "review_note": "اليوم مذكور بدون شهر وهو بعد يوم الاستلام، فالشهر مو محسوم",
+            "date": "",
+            "expect_review": "1",
+            "hard_type": "ambiguous_date"
+          },
+          "reason": "اليوم مذكور بدون شهر وهو بعد يوم الاستلام، فالشهر مو محسوم. ما نفترض الشهر السابق."
+        },
+        {
+          "id": "DEV-G08-1",
+          "from": {
+            "review_note": "",
+            "category": "agent_dispute",
+            "secondary_category": "transfer_failed",
+            "department": "شبكة الوكلاء"
+          },
+          "to": {
+            "review_note": "التحويل الفاشل واضح؛ الإيداع ما نزل بدون ذكر وكيل أو محل، فنوعه غامض",
+            "category": "transfer_failed",
+            "secondary_category": "other",
+            "department": "العمليات والتحويلات"
+          },
+          "reason": "الإيداع ما يبين إنه عند وكيل، فما نثبت «خلاف مع الوكيل». التحويل الفاشل واضح فهو الأساسي، والإيداع مشكلة ثانية غامضة (أخرى) ويا مراجعة."
+        }
+      ]
     }
   ],
-  "data_version": 4
+  "data_version": 5
 }

@@ -34,6 +34,36 @@ def has_time_reference(message: str) -> bool:
     return bool(_TIME_RE.search(msg) or _DATE_RE.search(msg))
 
 
+# يوم بدون شهر: «يوم 27»، «يوم 27 الشهر»، «27 من الشهر». مو «يوم 27/9» ولا «يوم 27 أيلول».
+_MONTH_NAMES = ["كانون", "شباط", "آذار", "اذار", "نيسان", "أيار", "ايار", "حزيران", "تموز", "آب", "أيلول", "ايلول",
+                "تشرين"]
+_DAY_ONLY_RE = re.compile(
+    r"(?:(?<!\w)[وب]?يوم\s*(\d{1,2})|(?<!\d)(\d{1,2})\s*(?:من\s+)?(?:ال|بال)شهر)"
+    r"(?!\d)(?!\s*[/\-.]\s*\d)(?!\s*(?:من\s+)?(?:شهر\s*\d|" + "|".join(_MONTH_NAMES) + r"))"
+)
+
+
+# «يوم 27 الشهر الماضي»: الشهر محسوم بالنص
+_PAST_MONTH_RE = re.compile(r"\s*(?:(?:من\s+)?(?:ال|بال)?شهر\s*)?(?:الماضي|السابق|الفايت|الفات|اللي\s*(?:فات|راح|قبله))")
+
+
+def ambiguous_days(message: str, received_at: str | None) -> set[int]:
+    """أيام مذكورة بدون شهر وهي بعد يوم الاستلام، فما نعرف أي شهر يقصد (ما نفترض الشهر السابق).
+
+    اليوم اللي أصغر من يوم الاستلام أو يساويه ينحسب من نفس شهر الاستلام. بدون تاريخ استلام ما نحكم.
+    """
+    if not received_at:
+        return set()
+    try:
+        today = date.fromisoformat(received_at[:10]).day
+    except ValueError:
+        return set()
+    msg = (message or "").translate(ARABIC_DIGITS)
+    days = {int(m.group(1) or m.group(2)) for m in _DAY_ONLY_RE.finditer(msg)
+            if not _PAST_MONTH_RE.match(msg, m.end())}
+    return {d for d in days if today < d <= 31}
+
+
 def validate(extracted: dict, message: str, received_at: str | None):
     """فحص شكل الجواب. يرجع (حقول نظيفة، أسباب مراجعة). القيمة اللي شكلها غلط تنمسح وتنعلّم."""
     reasons = []
@@ -57,13 +87,18 @@ def validate(extracted: dict, message: str, received_at: str | None):
             reasons.append("invalid_amount")
 
     d = extracted.get("date")
+    unclear_days = ambiguous_days(message, received_at)
+    if unclear_days:
+        reasons.append("ambiguous_date")  # حتى لو الموديل ما طلّع تاريخ: الموظف لازم يعرف إن الشهر مو محسوم
     if d:
         try:
             parsed = date.fromisoformat(d)
             upper = date.fromisoformat(received_at[:10]) if received_at else None
             if parsed.year < 2020 or (upper and parsed > upper):
                 raise ValueError
-            if has_time_reference(message):
+            if parsed.day in unclear_days:
+                pass  # الموديل اختار شهر من عنده؛ التاريخ يبقى فارغ
+            elif has_time_reference(message):
                 fields["date"] = parsed.isoformat()
             else:
                 # غالباً الموديل حط تاريخ الاستلام. ما نخليه يوصل للمسودة.
@@ -494,7 +529,9 @@ def analyze(complaint: dict, with_draft=True, provider=None, model=None, calls=N
 
     fields, reasons = validate(x, message, received_at)
     category = x["category"]
-    security_risk = bool(x.get("security_risk"))
+    unauthorized = bool(x.get("unauthorized_operation"))
+    money_issue = bool(x.get("money_issue"))
+    security_risk = bool(x.get("security_risk")) or unauthorized  # التصريح بعملية غير مصرح بها = خطر أمني
     try:
         confidence = max(0.0, min(1.0, float(x.get("confidence"))))
     except (TypeError, ValueError):
@@ -509,6 +546,8 @@ def analyze(complaint: dict, with_draft=True, provider=None, model=None, calls=N
     if confidence < config.CONFIDENCE_THRESHOLD:
         reasons.insert(0, "low_confidence")
     reasons.extend(flags)
+    if category == "other" and money_issue:
+        reasons.append("money_issue_unclassified")  # شكوى مالية ما انحسم نوعها: الموظف يحددها
     if clipped:
         reasons.append("message_too_long")
     reason = (x.get("reason") or "").strip()
@@ -519,8 +558,8 @@ def analyze(complaint: dict, with_draft=True, provider=None, model=None, calls=N
     out = dict(
         status="done",
         category=category,
-        priority=config.priority_for(category, fields["amount"], security_risk),
-        department=config.ROUTING[category],
+        priority=config.priority_for(category, fields["amount"], security_risk, money_issue),
+        department=config.department_for(category, unauthorized),
         transaction_id=fields["transaction_id"],
         amount=fields["amount"],
         date=fields["date"],

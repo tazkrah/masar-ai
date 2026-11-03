@@ -32,7 +32,8 @@ MAX_RATE_LIMIT_WAIT = float(os.getenv("MASAR_MAX_RATE_LIMIT_WAIT", "90"))
 MAX_TOKENS_CLASSIFY = 1000
 MAX_TOKENS_DRAFT = 800
 CONFIDENCE_THRESHOLD = float(os.getenv("MASAR_CONFIDENCE_THRESHOLD", "0.75"))
-PROMPT_VERSION = "v4"  # v4: دليل وتعليمات مسودة أقصر، وحذف مثال التبرير اللي يتنسخ
+PROMPT_VERSION = "v5"  # v5: الغموض «أخرى» ويا سبب، الوكيل لازم يبين بالنص، شكوى مالية وعملية غير مصرح بها، يوم بدون شهر
+# v4: دليل وتعليمات مسودة أقصر، وحذف مثال التبرير اللي يتنسخ
 # v3: السبب مسنود بالرسالة، والمسودة ما تدّعي إجراء ولا تطلب معلومات بلا حاجة
 # v2: الأسئلة حسب موضوعها، وتاريخ الاستلام مو تاريخ المشكلة
 
@@ -88,6 +89,8 @@ REVIEW_REASON_LABELS = {
     "invalid_amount": "المبلغ المستخرج شكله غلط",
     "invalid_date": "التاريخ المستخرج شكله غلط",
     "unsupported_date": "الموديل طلّع تاريخ والرسالة ما بيها أي تاريخ أو وقت (انشال التاريخ)",
+    "ambiguous_date": "اليوم مذكور بدون شهر وهو بعد يوم الاستلام، فالشهر مو محسوم (التاريخ يبقى فارغ)",
+    "money_issue_unclassified": "شكوى مالية ونوع العملية مو واضح (سحب، إيداع، تحويل، بطاقة)",
     "draft_unsupported_date": "المسودة بيها تاريخ مو مذكور بالرسالة",
     "draft_forbidden_phrase": "المسودة بيها وعد أو عبارة ممنوعة",
     "message_too_long": "الرسالة طويلة وانقطعت",
@@ -120,8 +123,12 @@ def format_amount(amount: int | None) -> str | None:
     return f"{amount:,} دينار عراقي" if amount is not None else None
 
 
-def priority_for(category: str, amount: int | None, security_risk: bool) -> str:
-    """قواعد الأولوية. نفس الدالة تستخدم لحساب الإجابة الصحيحة بالبيانات."""
+def priority_for(category: str, amount: int | None, security_risk: bool, money_issue: bool = False) -> str:
+    """قواعد الأولوية. نفس الدالة تستخدم لحساب الإجابة الصحيحة بالبيانات.
+
+    money_issue: شكوى عن فلوس الزبون (خصم، سحب، إيداع، تحويل، فلوس يريد يرجعها) حتى لو نوع العملية مو واضح.
+    «أخرى» منخفضة بس إذا ما بيها فلوس؛ الشكوى المالية الغامضة متوسطة كحد أدنى.
+    """
     if security_risk:
         return "high"
     if amount is not None and amount >= HIGH_AMOUNT_IQD:
@@ -129,5 +136,13 @@ def priority_for(category: str, amount: int | None, security_risk: bool) -> str:
     if category == "wrong_recipient":
         return "high"  # الفلوس عند شخص ثاني، كل ما نتأخر يصعب الاسترداد
     if category == "other":
-        return "low"
+        return "medium" if money_issue else "low"
     return "medium"
+
+
+def department_for(category: str, unauthorized: bool = False) -> str:
+    """جدول التوجيه، ويا استثناء واحد: عملية يصرّح الزبون إنه ما سواها («مو آني»، «بدون علمي») وفئتها غامضة
+    تروح لأمن الحسابات بدال خدمة الزبائن العامة. الفئات الواضحة تبقى على قسمها."""
+    if unauthorized and category == "other":
+        return ROUTING["account_access"]
+    return ROUTING[category]

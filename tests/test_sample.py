@@ -19,7 +19,27 @@ def _load(name):
 
 sel = _load("select_dev_sample")
 evaluate = _load("evaluate")
-LABELS = list(csv.DictReader((ROOT / "data" / "complaints" / "labels" / "dev_labels.csv").open(encoding="utf-8")))
+DATA = ROOT / "data" / "complaints"
+
+
+def labels_at(version):
+    """إجابات التطوير مثل ما كانت بنسخة بيانات سابقة: نرجّع القيم القديمة المسجلة بـ manifest للنسخ الأحدث."""
+    with (DATA / "labels" / "dev_labels.csv").open(encoding="utf-8") as fh:
+        rows = {r["complaint_id"]: r for r in csv.DictReader(fh)}
+    manifest = json.loads((DATA / "manifest.json").read_text(encoding="utf-8"))
+    for rev in reversed(manifest.get("revisions", [])):
+        if rev["data_version"] <= version:
+            break
+        for ch in rev.get("label_changes", []):
+            rows[ch["id"]].update(ch["from"])
+        for col in rev.get("new_columns", []):
+            for r in rows.values():
+                r.pop(col, None)
+    return list(rows.values())
+
+
+# عينة التطوير 2 انسحبت من نسخة البيانات 4، فالاختيار يتأكد عليها مو على الإجابات المصححة.
+LABELS = labels_at(4)
 
 
 class SelectTests(unittest.TestCase):
@@ -44,6 +64,10 @@ class SelectTests(unittest.TestCase):
             others = {l["family_id"] for l in LABELS if l["category"] == p["category"]
                       and (l["hard_type"] or "clear") == p["kind"]} - prev
             self.assertEqual(others - {q["family"] for q in a}, set(), p)
+
+    def test_saved_sample_matches_selection_on_its_data_version(self):
+        saved = json.loads((ROOT / "runs" / "samples" / "dev-sample-2.json").read_text(encoding="utf-8"))
+        self.assertEqual([p["id"] for p in sel.select(LABELS)], saved["ids"])
 
     def test_select_ids_keeps_order_and_rejects_unknown(self):
         rows = [{"source_id": f"DEV-{i}"} for i in range(5)]

@@ -57,6 +57,15 @@ def norm(v):
     return None if v in ("", None) else str(v)
 
 
+def swap_accepted(g, pred):
+    """الموديل اختار المشكلة الثانية كأساسية، والإجابة الصحيحة تقبل الترتيبين صراحة (accepted_swap=1).
+
+    ينقبل بس للرسائل اللي النص يدعم بيها المشكلتين وماكو قاعدة تحسم الترتيب (موثقة بنسخة البيانات 5).
+    ملفات الإجابات القديمة ما بيها العمود، فما ينقبل أي تبديل بيها.
+    """
+    return str(g.get("accepted_swap") or "0") == "1" and bool(g["secondary_category"]) and pred == g["secondary_category"]
+
+
 FIELDS = ("transaction_id", "amount", "date")
 MODEL_REASONS = {"low_confidence"} | pipeline.MODEL_FLAGS  # أسباب مراجعة من الموديل نفسه، مو من حماية الكود
 
@@ -125,7 +134,7 @@ def class_coverage(pairs, per_class):
 def score(results, labels, threshold):
     done = [r for r in results if r["status"] == "done"]
     failed = [r for r in results if r["status"] != "done"]
-    pairs, lenient, errors = [], 0, []
+    pairs, lenient, strict, errors = [], 0, 0, []
     field_ok = Counter()
     prio_ok = dept_ok = 0
     review_hits = review_expected = 0
@@ -135,9 +144,12 @@ def score(results, labels, threshold):
 
     for r in done:
         g = labels[r["source_id"]]
-        pairs.append((g["category"], r["category"]))
-        conf[g["category"]][r["category"]] += 1
-        ok_cat = g["category"] == r["category"]
+        strict += g["category"] == r["category"]
+        swapped = swap_accepted(g, r["category"])
+        gold_cat = r["category"] if swapped else g["category"]  # الترتيب المقبول ينحسب صح بالدقة والـF1 والخلط
+        pairs.append((gold_cat, r["category"]))
+        conf[gold_cat][r["category"]] += 1
+        ok_cat = gold_cat == r["category"]
         lenient += ok_cat or (bool(g["secondary_category"]) and r["category"] == g["secondary_category"])
         mism = []
         for f in ("transaction_id", "amount", "date"):
@@ -176,6 +188,9 @@ def score(results, labels, threshold):
         "n": len(results), "processed": n, "failed": len(failed),
         "failures": [{"id": r["source_id"], "error": r["error"]} for r in failed],
         "category_accuracy": sum(g == p for g, p in pairs) / n if n else None,
+        "category_accuracy_strict": strict / n if n else None,
+        "category_accuracy_note": "category_accuracy تقبل تبديل الأساسية والثانوية بس بالرسائل المعلّمة accepted_swap=1؛ "
+                                  "strict تطلب نفس الأساسية دائماً.",
         "category_macro_f1_present_classes": macro_present,
         "category_macro_f1_all_classes": macro,
         "classes_absent_from_sample": absent,
