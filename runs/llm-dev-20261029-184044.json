@@ -1,0 +1,305 @@
+{
+  "n": 20,
+  "processed": 20,
+  "failed": 0,
+  "failures": [],
+  "category_accuracy": 0.7,
+  "category_macro_f1_present_classes": 0.65,
+  "category_macro_f1_all_classes": 0.65,
+  "classes_absent_from_sample": [],
+  "class_coverage_note": null,
+  "class_coverage": {
+    "transfer_failed": {
+      "gold": 4,
+      "predicted": 6,
+      "f1": 0.6
+    },
+    "wrong_recipient": {
+      "gold": 3,
+      "predicted": 2,
+      "f1": 0.8
+    },
+    "account_access": {
+      "gold": 3,
+      "predicted": 3,
+      "f1": 1.0
+    },
+    "agent_dispute": {
+      "gold": 3,
+      "predicted": 0,
+      "f1": 0.0
+    },
+    "card": {
+      "gold": 3,
+      "predicted": 5,
+      "f1": 0.5
+    },
+    "other": {
+      "gold": 4,
+      "predicted": 4,
+      "f1": 1.0
+    }
+  },
+  "category_accuracy_lenient_multi": 0.75,
+  "field_exact": {
+    "transaction_id": 0.95,
+    "amount": 1.0,
+    "date": 0.95
+  },
+  "field_exact_all3": 0.9,
+  "priority_accuracy": 0.9,
+  "department_accuracy_all": 0.7,
+  "auto_routed_share": 0.55,
+  "auto_routed_department_accuracy": 0.8181818181818182,
+  "review_rate": 0.45,
+  "hard_cases_sent_to_review": "4/5",
+  "review_reasons": {
+    "multiple_issues": 2,
+    "reason_unsupported": 4,
+    "draft_missing_issue": 1,
+    "low_confidence": 3,
+    "unclear_message": 2,
+    "possible_injection": 1,
+    "draft_unsupported_action": 1
+  },
+  "confusion": {
+    "transfer_failed": {
+      "transfer_failed": 3,
+      "card": 1
+    },
+    "wrong_recipient": {
+      "wrong_recipient": 2,
+      "transfer_failed": 1
+    },
+    "agent_dispute": {
+      "card": 2,
+      "transfer_failed": 1
+    },
+    "other": {
+      "other": 4
+    },
+    "card": {
+      "card": 2,
+      "transfer_failed": 1
+    },
+    "account_access": {
+      "account_access": 3
+    }
+  },
+  "threshold": 0.75,
+  "avg_latency_ms": 1718.2,
+  "tokens": {
+    "input": 51420,
+    "output": 5495,
+    "rows_with_unknown_tokens": 0
+  },
+  "est_cost_usd": 0.0,
+  "raw_vs_guarded": {
+    "rows_with_raw": 20,
+    "rows_without_raw": 0,
+    "guard_review_reasons": {
+      "reason_unsupported": 4,
+      "draft_missing_issue": 1,
+      "draft_unsupported_action": 1
+    },
+    "field_exact": {
+      "raw": {
+        "transaction_id": 0.95,
+        "amount": 1.0,
+        "date": 0.95
+      },
+      "guarded": {
+        "transaction_id": 0.95,
+        "amount": 1.0,
+        "date": 0.95
+      }
+    },
+    "fields_changed_by_guard": {
+      "transaction_id": 0,
+      "amount": 0,
+      "date": 0
+    },
+    "review_rate": {
+      "raw": 0.25,
+      "guarded": 0.45
+    },
+    "hard_cases_sent_to_review": {
+      "raw": "4/5",
+      "guarded": "4/5"
+    }
+  },
+  "errors": [
+    {
+      "id": "DEV-T11-2",
+      "family": "T11",
+      "message": "السلام عليكم، سويت تحويل رقم #8916739286 وما وصل بعد. حاولت أفتح التطبيق لكن رمز التحقق ما يوصله. أحتاج أعرف شنو السبب حتى أكمل العملية. جزاكم الله خير.",
+      "category": "صح",
+      "priority": "صح",
+      "fields": [
+        "transaction_id: متوقع=8916739286 طلع=فارغ"
+      ],
+      "confidence": 0.93,
+      "review_reasons": [
+        "multiple_issues"
+      ],
+      "expected_review": "multiple_issues",
+      "reason": "الزبون ما وصل التحويل ويشتكي من عدم وصول رمز التحقق للتطبيق"
+    },
+    {
+      "id": "DEV-G03-3",
+      "family": "G03",
+      "message": "شلون صار، سحبته قبل ثلاث ايام وما وصلني الكاش، الله يسامحكم.",
+      "category": "agent_dispute -> card",
+      "priority": "صح",
+      "fields": [],
+      "confidence": 0.95,
+      "review_reasons": [],
+      "expected_review": null,
+      "reason": "الزبون سحب كاش قبل ثلاث أيام وما وصل المبلغ."
+    },
+    {
+      "id": "DEV-G08-5",
+      "family": "G08",
+      "message": "إيداع بـ٢٥٠ الف قبل ثلاث ايام ما نزل والتحويل الثاني فشل، ياريت تسوون شي بسرعة",
+      "category": "agent_dispute -> transfer_failed",
+      "priority": "صح",
+      "fields": [],
+      "confidence": 0.96,
+      "review_reasons": [
+        "multiple_issues",
+        "reason_unsupported",
+        "draft_missing_issue"
+      ],
+      "expected_review": "multiple_issues",
+      "reason": "الزبون يشتكي من إيداع 250000 ما نزل قبل 3 أيام وتحويل ثاني فشل"
+    },
+    {
+      "id": "DEV-G02-2",
+      "family": "G02",
+      "message": "سلام، السحب صار معايا عمولة مية وخمسين الف قبل يومين، ما أريد هالشي. Could you help؟ شكرًا.",
+      "category": "agent_dispute -> card",
+      "priority": "صح",
+      "fields": [],
+      "confidence": 0.96,
+      "review_reasons": [
+        "reason_unsupported"
+      ],
+      "expected_review": null,
+      "reason": "الزبون يشتكي من عمولة سحب بطاقة بقيمة 150000 دينار قبل يومين"
+    },
+    {
+      "id": "DEV-W10-2",
+      "family": "W10",
+      "message": "السلام عليكم، أتمنى تكونون بخير. حبيت أبلغكم إني حولت مية الف إلى اسم سليم عن طريق الخطأ، وكان المفروض أختار سليمه. رقم العملية هو 99332202، والفلوس صارت بحسابه. بارك الله فيكم وشكراً.",
+      "category": "صح",
+      "priority": "صح",
+      "fields": [],
+      "confidence": 0.95,
+      "review_reasons": [],
+      "expected_review": "similar_names",
+      "reason": "الزبون حول مبلغ إلى اسم خاطئ ويريد إرجاعه"
+    },
+    {
+      "id": "DEV-T04-3",
+      "family": "T04",
+      "message": "هلا، صارلي قبل ثلاث ايام انقص من حسابي ٧٥ الف مرتين وما أدري شنو السالفة. شكد اكمّل من هالمشكلة؟ رجاءً تساعدوني.",
+      "category": "transfer_failed -> card",
+      "priority": "medium -> high",
+      "fields": [],
+      "confidence": 0.93,
+      "review_reasons": [
+        "reason_unsupported"
+      ],
+      "expected_review": null,
+      "reason": "الزبون يقول إن مبلغ 75000 انخصم مرتين من حسابه بدون علمه."
+    },
+    {
+      "id": "DEV-K08-4",
+      "family": "K08",
+      "message": "البارحة شفت انخصمت ٥٠ الف من حسابي، مو متأكد شنو صاير",
+      "category": "card -> transfer_failed",
+      "priority": "صح",
+      "fields": [],
+      "confidence": 0.7,
+      "review_reasons": [
+        "low_confidence"
+      ],
+      "expected_review": null,
+      "reason": "الزبون شاف خصم ٥٠ ألف من حسابه وما يعرف السبب"
+    },
+    {
+      "id": "DEV-W07-3",
+      "family": "W07",
+      "message": "صباح الخير، يوم 27 الشهر سويت تحويل غلط وماكو رد من الطرف الثاني. ممكن تشوفون الموضوع وتفهمون ال status؟ شكراً.",
+      "category": "wrong_recipient -> transfer_failed",
+      "priority": "high -> medium",
+      "fields": [
+        "date: متوقع=2026-09-27 طلع=فارغ"
+      ],
+      "confidence": 0.78,
+      "review_reasons": [],
+      "expected_review": null,
+      "reason": "الزبون ذكر أنه سوي تحويل غلط ولم يتلقى رد من الطرف الثاني."
+    }
+  ],
+  "split": "dev",
+  "dataset": "llm",
+  "provider": "groq",
+  "model": "openai/gpt-oss-120b",
+  "prompt_version": "v4",
+  "drafts": true,
+  "wall_seconds": 280.9,
+  "db": "local.nosync/runs/llm-dev-20261029-184044.db",
+  "run": {
+    "run_id": "916465a375f64b9c99c279af55ecbf83",
+    "done": 20,
+    "failed": 0,
+    "skipped": 0,
+    "not_started": 0,
+    "stopped": null,
+    "resume_after": null
+  },
+  "forbidden_in_drafts": 0,
+  "llm_calls": [
+    {
+      "stage": "classify",
+      "outcome": "ok",
+      "n": 20,
+      "tin": 34007,
+      "cached": 10752,
+      "tout": 3756,
+      "unknown": 0,
+      "cached_unknown": 13
+    },
+    {
+      "stage": "classify",
+      "outcome": "rate_limited",
+      "n": 18,
+      "tin": null,
+      "cached": null,
+      "tout": null,
+      "unknown": 18,
+      "cached_unknown": 18
+    },
+    {
+      "stage": "draft",
+      "outcome": "ok",
+      "n": 20,
+      "tin": 17413,
+      "cached": 1792,
+      "tout": 1739,
+      "unknown": 0,
+      "cached_unknown": 15
+    },
+    {
+      "stage": "draft",
+      "outcome": "rate_limited",
+      "n": 12,
+      "tin": null,
+      "cached": null,
+      "tout": null,
+      "unknown": 12,
+      "cached_unknown": 12
+    }
+  ]
+}
