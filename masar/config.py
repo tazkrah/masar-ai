@@ -32,6 +32,8 @@ MAX_RATE_LIMIT_WAIT = float(os.getenv("MASAR_MAX_RATE_LIMIT_WAIT", "90"))
 MAX_TOKENS_CLASSIFY = 1000
 MAX_TOKENS_DRAFT = 800
 CONFIDENCE_THRESHOLD = float(os.getenv("MASAR_CONFIDENCE_THRESHOLD", "0.75"))
+# الديمو (scripts/demo.py) يحط هنا مصدر النتائج المعروضة، مثلاً «نتائج معالجة سابقة — v4». فارغ بالتشغيل العادي.
+DEMO_LABEL = os.getenv("MASAR_DEMO_LABEL", "")
 PROMPT_VERSION = "v5"  # v5: الغموض «أخرى» ويا سبب، الوكيل لازم يبين بالنص، شكوى مالية وعملية غير مصرح بها، يوم بدون شهر
 # v4: دليل وتعليمات مسودة أقصر، وحذف مثال التبرير اللي يتنسخ
 # v3: السبب مسنود بالرسالة، والمسودة ما تدّعي إجراء ولا تطلب معلومات بلا حاجة

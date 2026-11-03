@@ -115,6 +115,12 @@ textarea { line-height: 1.75 !important; }
 .fact .none { color: var(--muted); font-size: .9rem; }
 .fact .high { color: var(--red); }
 .tag-unsaved { color: var(--amber); font-size: .76rem; }
+.demo-tag { color: var(--muted); font-size: .76rem; font-weight: 700; border: 1px solid var(--line); border-radius: 999px;
+            padding: .05rem .55rem; white-space: nowrap; }
+.why-row { margin-top: 0; }
+[class*="st-key-why_"] button { min-height: 0; padding: .05rem .5rem; border-color: var(--amber-line); background: var(--amber-bg); }
+[class*="st-key-why_"] button p { font-size: .76rem; color: var(--amber); font-weight: 700; }
+.line.flag.draft { margin-top: .35rem; }
 .foot-msg.warn { color: var(--amber); font-weight: 700; }
 [class*="st-key-addnote_"] button { min-height: 0; padding: .1rem .5rem; color: var(--teal); font-weight: 700; }
 [class*="st-key-w_note_"] input { font-size: .88rem; }
@@ -414,7 +420,8 @@ def status_widget():
 with st.container(key="topbar"):
     c_brand, c_status, c_batch, c_up = st.columns([2.6, 1.5, 2.1, 0.8], vertical_alignment="center")
     c_brand.markdown(f'<div class="brand"><span class="name">مسار</span><span class="sum"><b>{len(rows)}</b> شكوى · '
-                     f'راجعت <b>{decided}</b> · بانتظار مراجعتك <b>{len(to_review)}</b></span></div>',
+                     f'راجعت <b>{decided}</b> · بانتظار مراجعتك <b>{len(to_review)}</b></span>'
+                     + (f'<span class="demo-tag">{esc(config.DEMO_LABEL)}</span>' if config.DEMO_LABEL else "") + '</div>',
                      unsafe_allow_html=True)
     with c_status, st.container(key="status"):
         status_widget()
@@ -530,10 +537,24 @@ def header():
     st.markdown("<style>:root { --body-h: calc(100vh - 280px); }</style>", unsafe_allow_html=True)
 
 
+# أسباب تنعرض بمكانها مو بالصندوق العلوي: التبرير جنب سبب التصنيف، والمسودة جنب المسودة. الأسباب نفسها ما تتغير.
+REASON_AT_WHY = {"reason_unsupported"}
+
+
+# أسباب مراجعة للمسودة يغطيها فحص الاعتماد نفسه (approval_blockers)، فتنعرض مرة وحدة كـ«يمنع الاعتماد»
+BLOCKING_DRAFT_REASONS = {"draft_forbidden_phrase", "draft_unsupported_action", "draft_sensitive_request",
+                          "draft_not_needed_request", "draft_known_info_request", "draft_unsupported_amount"}
+
+
+def at_draft(x):
+    return x.startswith("draft_")
+
+
 def body():
-    if s == "flag":
+    top = [x for x in r["review_reasons"] if x not in REASON_AT_WHY and not at_draft(x)]
+    if s == "flag" and top:
         st.markdown('<div class="line flag"><b>انتبه قبل الاعتماد:</b> '
-                    + "، ".join(esc(REASONS.get(x, x)) for x in r["review_reasons"]) + '.</div>', unsafe_allow_html=True)
+                    + "، ".join(esc(REASONS.get(x, x)) for x in top) + '.</div>', unsafe_allow_html=True)
     elif s == "failed":
         st.markdown(f'<div class="line failed"><b>خطأ بهذي الشكوى:</b> {esc(short_error(r["error"]))}</div>',
                     unsafe_allow_html=True)
@@ -574,12 +595,36 @@ def body():
         fact(c2[1], "المبلغ", amount_shown(r, cur["cat"]), "amount")
         fact(c2[2], "تاريخ المشكلة", r["date"], "date", ltr=True)
         if r["reason"]:
-            st.markdown(f'<div class="why"><b>سبب التصنيف:</b> {esc(r["reason"])}</div>', unsafe_allow_html=True)
+            why = f'<div class="why"><b>سبب التصنيف:</b> {esc(r["reason"])}</div>'
+            if REASON_AT_WHY & set(r["review_reasons"]):
+                w1, w2 = st.columns([5, 1.4], vertical_alignment="center")
+                w1.markdown(why, unsafe_allow_html=True)
+                with w2, st.container(key=f"why_{cid}"):
+                    with st.popover("راجع سبب التصنيف", width="stretch"):
+                        details = pipeline.reason_unsupported(r["reason"], r["message"])
+                        found = (f': <b>{esc("، ".join(details))}</b>.' if details else
+                                 '. <span class="muted">السبب انسجل وقت المعالجة، والفحص الحالي ما يحدد تفصيل بالتبرير.</span>')
+                        st.markdown(f'<div class="pop-text">{esc(REASONS["reason_unsupported"])}{found}<br>'
+                                    '<span class="muted">اعتمد على رسالة الزبون، مو على التبرير.</span></div>',
+                                    unsafe_allow_html=True)
+            else:
+                st.markdown(why, unsafe_allow_html=True)
 
         st.markdown('<div class="sec">مسودة الرد</div>', unsafe_allow_html=True)
         ss[f"w_draft_{cid}"] = cur["draft"]
         st.text_area("مسودة الرد", key=f"w_draft_{cid}", height=140, label_visibility="collapsed",
                      on_change=keep_edit, args=(cid, "draft"))
+        # تحذيرات المسودة جنبها: اللي يمنع الاعتماد من نفس فحص الاعتماد على النص الحالي، وأسباب المراجعة الأصلية للمسودة
+        fields = {k: r[k] for k in ("transaction_id", "amount", "date")}
+        blocks = pipeline.approval_blockers(cur["draft"], r["message"], fields)
+        notes = [REASONS.get(x, x) for x in r["review_reasons"]
+                 if at_draft(x) and x not in BLOCKING_DRAFT_REASONS] if cur["draft"] == r["draft"] else []
+        if blocks or notes:
+            st.markdown('<div class="line flag draft">'
+                        + (f'<b>يمنع الاعتماد:</b> {esc("، ".join(blocks))}.' if blocks else "")
+                        + (" " if blocks and notes else "")
+                        + (f'<b>انتبه بالمسودة:</b> {esc("، ".join(notes))}.' if notes else "") + '</div>',
+                        unsafe_allow_html=True)
 
     with st.expander("تفاصيل تقنية"):
         tech = [f"المعرّف الداخلي: {cid}", f"المحاولات: {r['attempts']}", f"آخر تحديث: {fmt_time(r['updated_at'])}"]

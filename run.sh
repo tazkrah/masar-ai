@@ -18,5 +18,6 @@ case "$1" in
   eval) shift; exec "$VENV/bin/python" scripts/evaluate.py "$@" ;;
   generate) shift; exec "$VENV/bin/python" scripts/generate_llm_dataset.py "$@" ;;
   try) shift; exec "$VENV/bin/python" scripts/try_one.py "$@" ;;
+  demo) shift; exec "$VENV/bin/python" scripts/demo.py "$@" ;;
   *)    exec "$VENV/bin/streamlit" run app.py --server.port "${PORT:-8501}" ;;
 esac
