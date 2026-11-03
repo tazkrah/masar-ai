@@ -65,7 +65,7 @@
         "wrong_recipient": 25
       },
       "sha256": "1f39f5607cbce41831f65ae769fe6ed7aeea07162d98e22965e97280470639ae",
-      "labels_sha256": "c6e99f916e88c5abb2d3c43e4d56f26ab16a19dae778be008cd5b1785e56380b"
+      "labels_sha256": "1c6db3303b3d3eb4be2e64e9280fe4b99e17bfecd2fb7562705a8fad9421ef98"
     },
     "calib": {
       "rows": 60,
@@ -776,7 +776,63 @@
           "reason": "الإيداع ما يبين إنه عند وكيل، فما نثبت «خلاف مع الوكيل». التحويل الفاشل واضح فهو الأساسي، والإيداع مشكلة ثانية غامضة (أخرى) ويا مراجعة."
         }
       ]
+    },
+    {
+      "data_version": 6,
+      "date": "2026-11-03T17:56:07",
+      "split": "dev",
+      "messages_changed": [],
+      "labels_changed": true,
+      "method": "manual review of message text and meaning (scripts/label_corrections.py)",
+      "reason": "تغيير سياسة: العملية المصرّح إنها مو مأذونة تروح لأمن الحسابات بأولوية عالية مهما كانت الفئة (بالنسخة 5 كانت بس للفئة الغامضة). وعمود amount_category يحدد المشكلة اللي يخصها المبلغ، حتى مبلغ الإيداع ما ينحسب مبلغ التحويل. ملفات الضبط والاختبار ما تغيرت، فإجاباتها تتبع السياسة القديمة؛ التقييم يعرض أي تعارض بوضوح.",
+      "new_columns": [
+        "amount_category"
+      ],
+      "labels_sha256_before": "c6e99f916e88c5abb2d3c43e4d56f26ab16a19dae778be008cd5b1785e56380b",
+      "labels_sha256_after": "1c6db3303b3d3eb4be2e64e9280fe4b99e17bfecd2fb7562705a8fad9421ef98",
+      "label_changes": [
+        {
+          "id": "DEV-G08-5",
+          "from": {
+            "amount_category": "transfer_failed"
+          },
+          "to": {
+            "amount_category": "other"
+          },
+          "reason": "المبلغ بالرسالة مبلغ الإيداع (المشكلة الثانية الغامضة)، مو مبلغ التحويل الفاشل."
+        },
+        {
+          "id": "DEV-K04-4",
+          "from": {
+            "department": "البطاقات"
+          },
+          "to": {
+            "department": "أمن الحسابات"
+          },
+          "reason": "يصرّح إن أحد حاول يسحب من حسابه (عملية مو مأذونة) ويا ضياع البطاقة: حسب قاعدة النسخة 6 القسم أمن الحسابات والأولوية عالية، والفئة تبقى البطاقة."
+        },
+        {
+          "id": "DEV-G08-3",
+          "from": {
+            "amount_category": "transfer_failed"
+          },
+          "to": {
+            "amount_category": "other"
+          },
+          "reason": "المبلغ بالرسالة مبلغ الإيداع (المشكلة الثانية الغامضة)، مو مبلغ التحويل الفاشل."
+        },
+        {
+          "id": "DEV-G08-1",
+          "from": {
+            "amount_category": "transfer_failed"
+          },
+          "to": {
+            "amount_category": "other"
+          },
+          "reason": "المبلغ بالرسالة مبلغ الإيداع (المشكلة الثانية الغامضة)، مو مبلغ التحويل الفاشل."
+        }
+      ]
     }
   ],
-  "data_version": 5
+  "data_version": 6
 }

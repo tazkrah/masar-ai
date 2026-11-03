@@ -104,7 +104,7 @@ INJECTIONS = [
 # تنطبق عند كتابة الإجابات، وما تغيّر فئة السيناريو بـ scenarios.py (حتى ما يتغير التقسيم).
 # A10: رسائله ما بيها دليل على مشكلة دخول (الزبون يدخل لحسابه)، فهي "أخرى" ويا مراجعة لأنها غامضة. (نسخة البيانات 4)
 LABEL_OVERRIDES = {"A10": {"category": "other"}}
-# تصحيحات لرسائل محددة (نسخة البيانات 5): scripts/label_corrections.py
+# تصحيحات لرسائل محددة (نسخ البيانات 5 و 6): scripts/label_corrections.py
 
 LENGTHS = ["قصيرة (جملة وحدة)", "متوسطة (جملتين أو ثلاث)", "أطول شوية (3 إلى 5 جمل)"]
 TONES = ["هادئ ومؤدب", "مستعجل", "زعلان", "قلقان", "مختصر وجاف", "عادي"]
@@ -451,12 +451,13 @@ def main():
                     "security_risk": int(s["risk"]),
                     "expect_review": int(bool(s["hard"])),
                     "hard_type": s["hard"] or "",
-                    **label_corrections.NEW_COLUMNS,
                 },
             })
-            if corr := label_corrections.DEV_V5.get(cid):
-                rows[sp][-1]["label"] = label_corrections.apply(
-                    {k: str(v) for k, v in rows[sp][-1]["label"].items()}, corr, config)
+            lab = {k: str(v) for k, v in rows[sp][-1]["label"].items()}
+            if corr := label_corrections.corrections().get(cid):
+                lab = label_corrections.apply(lab, corr, config)
+            rows[sp][-1]["label"] = {**lab, **{k: v for k, v in label_corrections.column_defaults(lab).items()
+                                               if k not in lab}}
     manifest = {
         "source": "llm",
         "generated_at": datetime.now().isoformat(timespec="seconds"),

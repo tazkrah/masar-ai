@@ -542,12 +542,22 @@ def analyze(complaint: dict, with_draft=True, provider=None, model=None, calls=N
         secondary = None
     if secondary and "multiple_issues" not in flags:
         flags.append("multiple_issues")
+    # المبلغ يخص أي مشكلة. مشكلة وحدة = الأساسية. قيمة غريبة = مو واضح.
+    amount_issue = None
+    if fields["amount"] is not None:
+        amount_issue = x.get("amount_issue") if secondary else "primary"
+        if amount_issue not in ("primary", "secondary", "unclear"):
+            amount_issue = "unclear"
 
     if confidence < config.CONFIDENCE_THRESHOLD:
         reasons.insert(0, "low_confidence")
     reasons.extend(flags)
     if category == "other" and money_issue:
         reasons.append("money_issue_unclassified")  # شكوى مالية ما انحسم نوعها: الموظف يحددها
+    if amount_issue == "secondary":
+        reasons.append("amount_for_second_issue")  # الموظف يتأكد إن المسودة ما تنسبه للمشكلة الأساسية
+    elif amount_issue == "unclear":
+        reasons.append("amount_issue_unclear")
     if clipped:
         reasons.append("message_too_long")
     reason = (x.get("reason") or "").strip()
@@ -566,6 +576,9 @@ def analyze(complaint: dict, with_draft=True, provider=None, model=None, calls=N
         security_risk=int(security_risk),
         confidence=confidence,
         secondary_category=secondary,
+        money_issue=int(money_issue),
+        unauthorized_operation=int(unauthorized),
+        amount_issue=amount_issue,
         reason=reason,
         model_flags=flags,
         raw_output=x,
@@ -581,7 +594,8 @@ def analyze(complaint: dict, with_draft=True, provider=None, model=None, calls=N
     )
 
     if with_draft:
-        dsys, duser = prompts.draft_prompts(message, category, fields, missing, secondary)
+        dsys, duser = prompts.draft_prompts(message, category, fields, missing, secondary,
+                                            amount_owner({**out, "amount_issue": amount_issue}))
         dres = llm.call(dsys, duser, max_tokens=config.MAX_TOKENS_DRAFT, provider=provider, model=model,
                         on_request=_logger(calls, "draft"))
         draft = format_amounts_in_draft(dres.text.strip(), fields["amount"])
@@ -681,6 +695,42 @@ def process(complaint_ids, with_draft=True, workers=None, on_progress=None, db_p
     return summary
 
 
+def amount_owner(r, category=None):
+    """المشكلة اللي يخصها المبلغ المحفوظ، بالنسبة للفئة الحالية (category: تصحيح الموظف، الافتراضي فئة الموديل).
+
+    يرجع مفتاح فئة، أو "unclear"، أو None إذا ماكو مبلغ. الحقول المستخرجة تخص الرسالة كلها، وممكن تخص المشكلة
+    الثانية (مثلاً مبلغ إيداع ويا تحويل فاشل). المبلغ يبقى ويا نفس المشكلة حتى لو الموظف غيّر الفئة:
+    - مبلغ الأساسية يتبع الفئة المصححة، إلا إذا الموظف خلّى المشكلة الثانية أساسية، فيبقى ويا المشكلة الأولى.
+    - مبلغ الثانية يبقى للثانية.
+    النتائج القديمة بدون amount_issue تنحسب للأساسية.
+    """
+    if r.get("amount") is None:
+        return None
+    cat = category or r["category"]
+    sec = r.get("secondary_category")
+    if r.get("amount_issue") == "unclear":
+        return "unclear"
+    if r.get("amount_issue") == "secondary" and sec:
+        return sec
+    if sec and cat == sec and cat != r["category"]:
+        return r["category"]
+    return cat
+
+
+def routing_for(r, category):
+    """الأولوية والقسم لشكوى محفوظة بفئة معينة (فئة الموديل أو تصحيح الموظف)، بنفس قواعد التوجيه كاملة:
+    الخطر الأمني، العملية غير المصرح بها، المبلغ الكبير، والشكوى المالية.
+
+    بنفس فئة الموديل نرجّع المحفوظ نفسه. النتائج القديمة بدون الحقلين الجديدين تنحسب False.
+    """
+    if category == r.get("category") and r.get("priority") and r.get("department"):
+        return r["priority"], r["department"]
+    unauthorized = bool(r.get("unauthorized_operation"))
+    risk = bool(r.get("security_risk")) or unauthorized
+    return (config.priority_for(category, r.get("amount"), risk, bool(r.get("money_issue"))),
+            config.department_for(category, unauthorized))
+
+
 def regenerate_draft(complaint_id, db_path=None):
     """يعيد كتابة المسودة فقط حسب النتيجة المحفوظة (مثلاً بعد ما الموظف صحح الفئة)."""
     with db.connect(db_path) as conn:
@@ -689,10 +739,12 @@ def regenerate_draft(complaint_id, db_path=None):
         v = conn.execute("SELECT corrected_category FROM reviews WHERE complaint_id = ?", (complaint_id,)).fetchone()
     category = (v and v[0]) or r["category"]
     secondary = r.get("secondary_category")
+    if secondary == category:  # الموظف خلّى المشكلة الثانية هي الأساسية: الأولى تصير الثانية
+        secondary = r["category"]
     fields = {"transaction_id": r["transaction_id"], "amount": r["amount"], "date": r["date"]}
     missing = [f for f in config.REQUIRED_FIELDS[category] if fields[f] is None]
     message, _ = clip(c["message"])
-    dsys, duser = prompts.draft_prompts(message, category, fields, missing, secondary)
+    dsys, duser = prompts.draft_prompts(message, category, fields, missing, secondary, amount_owner(r, category))
     calls = []
     try:
         res = llm.call(dsys, duser, max_tokens=config.MAX_TOKENS_DRAFT, on_request=_logger(calls, "redraft"))

@@ -1,181 +1,181 @@
-complaint_id,family_id,category,secondary_category,priority,department,transaction_id,amount,date,security_risk,expect_review,hard_type,accepted_swap,review_note
-DEV-A10-4,A10,other,,low,خدمة الزبائن العامة,,,,0,1,unclear_message,0,
-DEV-K10-4,K10,card,,medium,البطاقات,,,,0,0,,0,
-DEV-G07-5,G07,agent_dispute,,high,شبكة الوكلاء,,2500000,,0,0,,0,
-DEV-G01-3,G01,agent_dispute,,medium,شبكة الوكلاء,,,,0,0,,0,
-DEV-T08-2,T08,other,,high,خدمة الزبائن العامة,6260067209,1000000,2026-10-09,0,1,unclear_message,0,يذكر حوالة ورقمها ويطلب مراجعة بدون ما يگول شنو المشكلة
-DEV-K04-3,K04,card,,high,البطاقات,,,2026-10-07,1,0,,0,
-DEV-O03-2,O03,other,,low,خدمة الزبائن العامة,,,,0,0,,0,
-DEV-T11-1,T11,transfer_failed,account_access,medium,العمليات والتحويلات,,,2026-09-29,0,1,multiple_issues,0,
-DEV-O02-5,O02,other,,low,خدمة الزبائن العامة,,,,0,0,,0,
-DEV-K07-3,K07,card,,medium,البطاقات,,,,0,0,,0,
-DEV-T02-3,T02,transfer_failed,,medium,العمليات والتحويلات,,120000,,0,0,,0,
-DEV-A04-4,A04,account_access,,high,أمن الحسابات,,,,1,0,,0,
-DEV-W05-5,W05,other,,medium,خدمة الزبائن العامة,,,,0,1,unclear_message,0,يطلب رجوع فلوس بدون أي تفصيل عن العملية
-DEV-O09-1,O09,other,,low,خدمة الزبائن العامة,,,,0,1,possible_injection,0,
-DEV-G08-2,G08,agent_dispute,transfer_failed,medium,شبكة الوكلاء,,20000,2026-10-07,0,1,multiple_issues,1,
-DEV-G03-5,G03,agent_dispute,,medium,شبكة الوكلاء,,400000,,0,0,,0,
-DEV-T11-2,T11,transfer_failed,account_access,medium,العمليات والتحويلات,8916739286,,,0,1,multiple_issues,0,
-DEV-O02-3,O02,other,,low,خدمة الزبائن العامة,,,,0,0,,0,
-DEV-O08-3,O08,other,,low,خدمة الزبائن العامة,,,,0,0,,0,
-DEV-K04-2,K04,card,,high,البطاقات,,,2026-10-07,1,0,,0,
-DEV-W01-1,W01,wrong_recipient,,high,النزاعات والاسترداد,,25000,2026-10-04,0,0,,0,
-DEV-W05-1,W05,other,,medium,خدمة الزبائن العامة,,,,0,1,unclear_message,0,يطلب رجوع فلوس تحويل بدون ذكر شنو صار (فشل أو مستلم غلط)
-DEV-W02-3,W02,wrong_recipient,,high,النزاعات والاسترداد,,30000,,0,0,,0,
-DEV-G08-4,G08,agent_dispute,transfer_failed,medium,شبكة الوكلاء,,120000,,0,1,multiple_issues,1,
-DEV-W08-1,W08,wrong_recipient,,high,النزاعات والاسترداد,,1000000,2026-10-14,0,0,,0,
-DEV-W07-4,W07,wrong_recipient,,high,النزاعات والاسترداد,,,,0,0,,0,
-DEV-K04-5,K04,card,,high,البطاقات,,,2026-10-04,1,0,,0,
-DEV-K04-1,K04,card,,high,البطاقات,,,,1,1,ambiguous_date,0,اليوم مذكور بدون شهر وهو بعد يوم الاستلام، فالشهر مو محسوم
-DEV-G01-4,G01,other,,medium,خدمة الزبائن العامة,,15000,2026-10-07,0,1,unclear_message,0,إيداع ما نزل بدون ذكر وين انعمل (وكيل أو غيره)
-DEV-W01-2,W01,wrong_recipient,,high,النزاعات والاسترداد,,100000,2026-10-07,0,0,,0,
-DEV-A10-5,A10,other,,low,خدمة الزبائن العامة,,,,0,1,unclear_message,0,
-DEV-W01-4,W01,wrong_recipient,,high,النزاعات والاسترداد,,200000,,0,1,ambiguous_date,0,اليوم مذكور بدون شهر وهو بعد يوم الاستلام، فالشهر مو محسوم
-DEV-K07-5,K07,card,,medium,البطاقات,,,,0,0,,0,
-DEV-K07-4,K07,card,,medium,البطاقات,,,,0,0,,0,
-DEV-T06-5,T06,transfer_failed,,medium,العمليات والتحويلات,90019091,,,0,0,,0,
-DEV-G03-3,G03,other,,medium,خدمة الزبائن العامة,,,2026-10-10,0,1,unclear_message,0,سحب ما وصل كاشه بدون ذكر وكيل أو صراف
-DEV-W05-2,W05,wrong_recipient,,high,النزاعات والاسترداد,,,,0,0,,0,
-DEV-W01-5,W01,wrong_recipient,,high,النزاعات والاسترداد,,120000,2026-10-08,0,0,,0,
-DEV-A07-3,A07,account_access,,medium,أمن الحسابات,,,,0,0,,0,
-DEV-W05-3,W05,wrong_recipient,,high,النزاعات والاسترداد,,,,0,0,,0,
-DEV-T10-2,T10,transfer_failed,,medium,العمليات والتحويلات,,40000,2026-10-09,0,0,,0,
-DEV-A08-2,A08,account_access,,high,أمن الحسابات,5478823658,100000,2026-10-06,1,0,,0,
-DEV-W02-4,W02,wrong_recipient,,high,النزاعات والاسترداد,,60000,,0,0,,0,
-DEV-O04-1,O04,other,,low,خدمة الزبائن العامة,,,,0,0,,0,
-DEV-A08-4,A08,other,,high,أمن الحسابات,4785082688,60000,,1,1,unclear_message,0,سحب يصرّح إنه صار بدون علمه، بدون ذكر شلون صار (دخول للحساب أو بطاقة)
-DEV-T11-3,T11,transfer_failed,account_access,medium,العمليات والتحويلات,86591515,100000,,0,1,multiple_issues,0,
-DEV-K10-5,K10,card,,medium,البطاقات,,,,0,0,,0,
-DEV-T01-3,T01,transfer_failed,,medium,العمليات والتحويلات,78607234,100000,2026-10-05,0,0,,0,
-DEV-W10-4,W10,wrong_recipient,,high,النزاعات والاسترداد,66329337,400000,,0,1,similar_names,0,
-DEV-K10-1,K10,card,,medium,البطاقات,,,,0,0,,0,
-DEV-T10-5,T10,transfer_failed,,medium,العمليات والتحويلات,78643675,300000,,0,0,,0,
-DEV-A08-5,A08,account_access,,high,أمن الحسابات,676594555,150000,2026-10-01,1,0,,0,
-DEV-G08-5,G08,transfer_failed,other,medium,العمليات والتحويلات,,250000,2026-10-01,0,1,multiple_issues,0,التحويل الفاشل واضح؛ الإيداع ما نزل بدون ذكر وكيل أو محل، فنوعه غامض
-DEV-A04-1,A04,account_access,,high,أمن الحسابات,,,2026-10-05,1,0,,0,
-DEV-A02-2,A02,account_access,,medium,أمن الحسابات,,,,0,0,,0,
-DEV-O02-4,O02,other,,low,خدمة الزبائن العامة,,,,0,0,,0,
-DEV-G02-5,G02,agent_dispute,,medium,شبكة الوكلاء,,100000,2026-10-14,0,0,,0,
-DEV-T04-1,T04,transfer_failed,,medium,العمليات والتحويلات,613398026,10000,2026-09-28,0,0,,0,
-DEV-K10-2,K10,card,,medium,البطاقات,,,,0,0,,0,
-DEV-K04-4,K04,card,,high,البطاقات,,,2026-10-01,1,0,,0,
-DEV-O04-2,O04,other,,low,خدمة الزبائن العامة,,,,0,0,,0,
-DEV-K02-4,K02,card,,medium,البطاقات,,,2026-10-07,0,0,,0,
-DEV-K10-3,K10,card,,medium,البطاقات,,,,0,0,,0,
-DEV-A07-4,A07,account_access,,medium,أمن الحسابات,,,2026-10-12,0,0,,0,
-DEV-A08-1,A08,other,,high,أمن الحسابات,93619109,400000,,1,1,unclear_message,0,سحب يصرّح إنه مو هو سواه، بدون ذكر شلون صار (دخول للحساب أو بطاقة)
-DEV-T01-5,T01,transfer_failed,,medium,العمليات والتحويلات,80737257,120000,2026-10-10,0,0,,0,
-DEV-G03-1,G03,agent_dispute,,medium,شبكة الوكلاء,,200000,,0,0,,0,
-DEV-W02-2,W02,wrong_recipient,,high,النزاعات والاسترداد,,60000,,0,0,,0,
-DEV-W10-5,W10,wrong_recipient,,high,النزاعات والاسترداد,42602918,40000,,0,1,similar_names,0,
-DEV-G02-4,G02,other,,medium,خدمة الزبائن العامة,,,2026-10-06,0,1,unclear_message,0,عملية ما نجحت بدون ذكر نوعها ولا وين صارت
-DEV-O04-3,O04,other,,low,خدمة الزبائن العامة,,,,0,0,,0,
-DEV-K07-2,K07,card,,medium,البطاقات,,,,0,0,,0,
-DEV-T04-2,T04,other,,medium,خدمة الزبائن العامة,,250000,2026-09-29,0,1,unclear_message,0,خصم مكرر بدون ذكر نوع العملية (تحويل، شراء، سحب)
-DEV-O03-4,O03,other,,low,خدمة الزبائن العامة,,,,0,0,,0,
-DEV-A04-5,A04,account_access,,high,أمن الحسابات,,,2026-10-03,1,0,,0,
-DEV-T06-3,T06,transfer_failed,,medium,العمليات والتحويلات,5739901981,25000,,0,0,,0,
-DEV-A10-3,A10,other,,low,خدمة الزبائن العامة,,,,0,1,unclear_message,0,
-DEV-W08-5,W08,wrong_recipient,,high,النزاعات والاسترداد,71195829,2500000,2026-10-01,0,0,,0,
-DEV-G07-1,G07,agent_dispute,,high,شبكة الوكلاء,,2500000,2026-10-10,0,0,,0,
-DEV-A10-1,A10,other,,medium,خدمة الزبائن العامة,,,,0,1,unclear_message,0,رصيده ما يطابق التحويلات بدون تحديد عملية
-DEV-T02-1,T02,transfer_failed,,medium,العمليات والتحويلات,,35000,2026-10-12,0,0,,0,
-DEV-A02-3,A02,account_access,,medium,أمن الحسابات,,,2026-09-22,0,0,,0,
-DEV-O08-5,O08,other,,low,خدمة الزبائن العامة,,,,0,0,,0,
-DEV-W02-1,W02,wrong_recipient,,high,النزاعات والاسترداد,,500000,2026-10-02,0,0,,0,
-DEV-G02-2,G02,other,,medium,خدمة الزبائن العامة,,150000,2026-10-08,0,1,unclear_message,0,عمولة على سحب بدون ذكر وين صار السحب (وكيل أو صراف)
-DEV-K02-1,K02,card,,medium,البطاقات,,,2026-10-13,0,0,,0,
-DEV-K08-2,K08,card,,medium,البطاقات,,,2026-10-08,0,0,,0,
-DEV-A03-1,A03,account_access,,medium,أمن الحسابات,,,2026-09-30,0,0,,0,
-DEV-W10-2,W10,wrong_recipient,,high,النزاعات والاسترداد,99332202,100000,,0,1,similar_names,0,
-DEV-O01-2,O01,other,,low,خدمة الزبائن العامة,,,,0,0,,0,
-DEV-W02-5,W02,wrong_recipient,,high,النزاعات والاسترداد,,40000,,0,0,,0,
-DEV-T08-4,T08,transfer_failed,,high,العمليات والتحويلات,,2000000,,0,0,,0,
-DEV-O03-1,O03,other,,low,خدمة الزبائن العامة,,,,0,0,,0,
-DEV-O02-2,O02,other,,low,خدمة الزبائن العامة,,,,0,0,,0,
-DEV-A03-5,A03,account_access,,medium,أمن الحسابات,,,2026-09-27,0,0,,0,
-DEV-W07-2,W07,wrong_recipient,,high,النزاعات والاسترداد,77102601,100000,2026-10-01,0,0,,0,
-DEV-T11-4,T11,transfer_failed,account_access,medium,العمليات والتحويلات,,500000,2026-10-02,0,1,multiple_issues,0,
-DEV-G08-3,G08,transfer_failed,other,medium,العمليات والتحويلات,,500000,,0,1,multiple_issues,0,التحويل الفاشل واضح؛ الإيداع ما نزل بدون ذكر وكيل أو محل، فنوعه غامض
-DEV-O01-4,O01,other,,low,خدمة الزبائن العامة,,,,0,0,,0,
-DEV-T01-4,T01,transfer_failed,,medium,العمليات والتحويلات,,75000,2026-09-30,0,0,,0,
-DEV-A07-5,A07,account_access,,medium,أمن الحسابات,,,,0,0,,0,
-DEV-O03-3,O03,other,,low,خدمة الزبائن العامة,,,,0,0,,0,
-DEV-T06-2,T06,transfer_failed,,medium,العمليات والتحويلات,987315171,75000,,0,0,,0,
-DEV-W10-1,W10,wrong_recipient,,high,النزاعات والاسترداد,,20000,,0,1,similar_names,0,
-DEV-O01-5,O01,other,,low,خدمة الزبائن العامة,,,,0,0,,0,
-DEV-K03-1,K03,card,,medium,البطاقات,858040915,200000,,0,0,,0,
-DEV-O08-1,O08,other,,low,خدمة الزبائن العامة,,,,0,0,,0,
-DEV-G03-4,G03,other,,medium,خدمة الزبائن العامة,,,,0,1,unclear_message,0,سحب ما وصل كاشه بدون ذكر وكيل أو صراف
-DEV-K02-5,K02,card,,medium,البطاقات,,,2026-10-13,0,0,,0,
-DEV-T06-4,T06,transfer_failed,,medium,العمليات والتحويلات,,400000,,0,0,,0,
-DEV-O09-4,O09,other,,low,خدمة الزبائن العامة,,,,0,1,possible_injection,0,
-DEV-A03-4,A03,account_access,,medium,أمن الحسابات,,,2026-10-01,0,0,,0,
-DEV-T06-1,T06,transfer_failed,,medium,العمليات والتحويلات,,75000,2026-10-04,0,0,,0,
-DEV-K03-2,K03,card,,medium,البطاقات,5642035702,40000,2026-10-04,0,0,,0,
-DEV-W01-3,W01,wrong_recipient,,high,النزاعات والاسترداد,,40000,2026-10-12,0,0,,0,
-DEV-T04-3,T04,other,,medium,خدمة الزبائن العامة,,75000,2026-10-04,0,1,unclear_message,0,خصم مكرر بدون ذكر نوع العملية (تحويل، شراء، سحب)
-DEV-G01-5,G01,agent_dispute,,medium,شبكة الوكلاء,,10000,,0,0,,0,
-DEV-G01-1,G01,agent_dispute,,medium,شبكة الوكلاء,,,,0,0,,0,
-DEV-T01-1,T01,transfer_failed,,medium,العمليات والتحويلات,64048857,400000,2026-10-05,0,0,,0,
-DEV-K07-1,K07,card,,medium,البطاقات,,,,0,0,,0,
-DEV-A04-2,A04,account_access,,high,أمن الحسابات,,,2026-10-07,1,0,,0,
-DEV-T10-4,T10,transfer_failed,,medium,العمليات والتحويلات,555557968,40000,,0,0,,0,
-DEV-A04-3,A04,account_access,,high,أمن الحسابات,,,2026-10-10,1,0,,0,
-DEV-O04-4,O04,other,,low,خدمة الزبائن العامة,,,,0,0,,0,
-DEV-O09-2,O09,other,,low,خدمة الزبائن العامة,,,,0,1,possible_injection,0,
-DEV-G07-2,G07,agent_dispute,,high,شبكة الوكلاء,,3000000,2026-10-03,0,0,,0,
-DEV-A03-2,A03,account_access,,medium,أمن الحسابات,,,2026-10-02,0,0,,0,
-DEV-O03-5,O03,other,,low,خدمة الزبائن العامة,,,,0,0,,0,
-DEV-A07-1,A07,account_access,,medium,أمن الحسابات,,,2026-10-06,0,0,,0,
-DEV-K02-2,K02,card,,medium,البطاقات,,,2026-10-03,0,0,,0,
-DEV-G07-3,G07,agent_dispute,,high,شبكة الوكلاء,,1000000,,0,1,ambiguous_date,0,اليوم مذكور بدون شهر وهو بعد يوم الاستلام، فالشهر مو محسوم
-DEV-G02-1,G02,agent_dispute,,medium,شبكة الوكلاء,,150000,2026-10-03,0,0,,0,
-DEV-A10-2,A10,other,,low,خدمة الزبائن العامة,,,,0,1,unclear_message,0,
-DEV-O09-5,O09,other,,low,خدمة الزبائن العامة,,,,0,1,possible_injection,0,
-DEV-W08-2,W08,transfer_failed,,high,العمليات والتحويلات,,1000000,,0,0,,0,
-DEV-T04-4,T04,other,,medium,خدمة الزبائن العامة,,75000,2026-10-08,0,1,unclear_message,0,خصم مكرر بدون ذكر نوع العملية (تحويل، شراء، سحب)
-DEV-A03-3,A03,account_access,,medium,أمن الحسابات,,,,0,0,,0,
-DEV-G03-2,G03,agent_dispute,,medium,شبكة الوكلاء,,75000,,0,0,,0,
-DEV-K08-1,K08,card,,medium,البطاقات,,150000,,0,0,,0,
-DEV-K08-4,K08,other,,medium,خدمة الزبائن العامة,,50000,2026-10-03,0,1,unclear_message,0,خصم ما يعرف سببه بدون ذكر بطاقة أو رسوم أو نوع العملية
-DEV-T02-5,T02,transfer_failed,,medium,العمليات والتحويلات,,400000,2026-10-07,0,0,,0,
-DEV-W10-3,W10,wrong_recipient,,high,النزاعات والاسترداد,35227616,75000,2026-10-07,0,1,similar_names,0,
-DEV-K03-3,K03,card,,medium,البطاقات,3130366987,25000,2026-10-13,0,0,,0,
-DEV-T08-3,T08,transfer_failed,,high,العمليات والتحويلات,969946862,1500000,2026-10-03,0,0,,0,
-DEV-W08-4,W08,other,,high,خدمة الزبائن العامة,458858318,1200000,2026-10-01,0,1,unclear_message,0,يذكر تحويل ورقمه ومستعجل بدون ما يگول شنو المشكلة
-DEV-W07-5,W07,wrong_recipient,,high,النزاعات والاسترداد,6359128651,250000,,0,0,,0,
-DEV-A07-2,A07,account_access,,medium,أمن الحسابات,,,2026-10-04,0,0,,0,
-DEV-G01-2,G01,other,,medium,خدمة الزبائن العامة,,75000,2026-09-30,0,1,unclear_message,0,إيداع ما نزل بدون ذكر وين انعمل (وكيل أو غيره)
-DEV-W08-3,W08,other,,high,خدمة الزبائن العامة,70404423,3000000,,0,1,unclear_message,0,يذكر تحويل ورقمه ومستعجل بدون ما يگول شنو المشكلة
-DEV-T02-2,T02,transfer_failed,,medium,العمليات والتحويلات,,,2026-09-25,0,0,,0,
-DEV-K02-3,K02,card,,medium,البطاقات,,,2026-10-04,0,0,,0,
-DEV-T02-4,T02,transfer_failed,,medium,العمليات والتحويلات,,30000,,0,0,,0,
-DEV-G07-4,G07,agent_dispute,,high,شبكة الوكلاء,,1500000,2026-10-08,0,0,,0,
-DEV-G02-3,G02,agent_dispute,,medium,شبكة الوكلاء,,400000,2026-10-13,0,0,,0,
-DEV-W07-3,W07,wrong_recipient,,high,النزاعات والاسترداد,,,,0,1,ambiguous_date,0,اليوم مذكور بدون شهر وهو بعد يوم الاستلام، فالشهر مو محسوم
-DEV-A08-3,A08,account_access,,high,أمن الحسابات,641717709,25000,,1,0,,0,
-DEV-K08-5,K08,card,,medium,البطاقات,,50000,2026-10-10,0,0,,0,
-DEV-O01-3,O01,other,,low,خدمة الزبائن العامة,,,,0,0,,0,
-DEV-K03-5,K03,card,,medium,البطاقات,2997568844,400000,2026-10-01,0,0,,0,
-DEV-T08-1,T08,transfer_failed,,high,العمليات والتحويلات,71671827,1000000,2026-10-09,0,0,,0,
-DEV-T04-5,T04,other,,medium,خدمة الزبائن العامة,,50000,2026-10-02,0,1,unclear_message,0,خصم مكرر بدون ذكر نوع العملية (تحويل، شراء، سحب)
-DEV-O04-5,O04,other,,low,خدمة الزبائن العامة,,,,0,0,,0,
-DEV-W07-1,W07,wrong_recipient,,high,النزاعات والاسترداد,,150000,,0,0,,0,
-DEV-T11-5,T11,transfer_failed,account_access,medium,العمليات والتحويلات,,,2026-09-27,0,1,multiple_issues,0,
-DEV-T10-1,T10,transfer_failed,,medium,العمليات والتحويلات,24647414,20000,2026-10-08,0,0,,0,
-DEV-T08-5,T08,transfer_failed,,high,العمليات والتحويلات,406731923,3000000,,0,1,ambiguous_date,0,اليوم مذكور بدون شهر وهو بعد يوم الاستلام، فالشهر مو محسوم
-DEV-O08-4,O08,other,,low,خدمة الزبائن العامة,,,,0,0,,0,
-DEV-O08-2,O08,other,,low,خدمة الزبائن العامة,,,,0,0,,0,
-DEV-T01-2,T01,transfer_failed,,medium,العمليات والتحويلات,,20000,2026-10-08,0,0,,0,
-DEV-O01-1,O01,other,,low,خدمة الزبائن العامة,,,,0,0,,0,
-DEV-K03-4,K03,card,,medium,البطاقات,,300000,2026-10-08,0,0,,0,
-DEV-A02-1,A02,account_access,,medium,أمن الحسابات,,,,0,0,,0,
-DEV-G08-1,G08,transfer_failed,other,medium,العمليات والتحويلات,,15000,,0,1,multiple_issues,0,التحويل الفاشل واضح؛ الإيداع ما نزل بدون ذكر وكيل أو محل، فنوعه غامض
-DEV-K08-3,K08,card,,medium,البطاقات,,20000,2026-10-06,0,0,,0,
-DEV-A02-5,A02,account_access,,medium,أمن الحسابات,,,,0,0,,0,
-DEV-O09-3,O09,other,,low,خدمة الزبائن العامة,,,,0,1,possible_injection,0,
-DEV-A02-4,A02,account_access,,medium,أمن الحسابات,,,2026-10-02,0,0,,0,
-DEV-W05-4,W05,wrong_recipient,,high,النزاعات والاسترداد,,,,0,0,,0,
-DEV-O02-1,O02,other,,low,خدمة الزبائن العامة,,,,0,0,,0,
-DEV-T10-3,T10,transfer_failed,,medium,العمليات والتحويلات,,120000,,0,0,,0,
+complaint_id,family_id,category,secondary_category,priority,department,transaction_id,amount,date,security_risk,expect_review,hard_type,accepted_swap,review_note,amount_category
+DEV-A10-4,A10,other,,low,خدمة الزبائن العامة,,,,0,1,unclear_message,0,,
+DEV-K10-4,K10,card,,medium,البطاقات,,,,0,0,,0,,
+DEV-G07-5,G07,agent_dispute,,high,شبكة الوكلاء,,2500000,,0,0,,0,,agent_dispute
+DEV-G01-3,G01,agent_dispute,,medium,شبكة الوكلاء,,,,0,0,,0,,
+DEV-T08-2,T08,other,,high,خدمة الزبائن العامة,6260067209,1000000,2026-10-09,0,1,unclear_message,0,يذكر حوالة ورقمها ويطلب مراجعة بدون ما يگول شنو المشكلة,other
+DEV-K04-3,K04,card,,high,البطاقات,,,2026-10-07,1,0,,0,,
+DEV-O03-2,O03,other,,low,خدمة الزبائن العامة,,,,0,0,,0,,
+DEV-T11-1,T11,transfer_failed,account_access,medium,العمليات والتحويلات,,,2026-09-29,0,1,multiple_issues,0,,
+DEV-O02-5,O02,other,,low,خدمة الزبائن العامة,,,,0,0,,0,,
+DEV-K07-3,K07,card,,medium,البطاقات,,,,0,0,,0,,
+DEV-T02-3,T02,transfer_failed,,medium,العمليات والتحويلات,,120000,,0,0,,0,,transfer_failed
+DEV-A04-4,A04,account_access,,high,أمن الحسابات,,,,1,0,,0,,
+DEV-W05-5,W05,other,,medium,خدمة الزبائن العامة,,,,0,1,unclear_message,0,يطلب رجوع فلوس بدون أي تفصيل عن العملية,
+DEV-O09-1,O09,other,,low,خدمة الزبائن العامة,,,,0,1,possible_injection,0,,
+DEV-G08-2,G08,agent_dispute,transfer_failed,medium,شبكة الوكلاء,,20000,2026-10-07,0,1,multiple_issues,1,,agent_dispute
+DEV-G03-5,G03,agent_dispute,,medium,شبكة الوكلاء,,400000,,0,0,,0,,agent_dispute
+DEV-T11-2,T11,transfer_failed,account_access,medium,العمليات والتحويلات,8916739286,,,0,1,multiple_issues,0,,
+DEV-O02-3,O02,other,,low,خدمة الزبائن العامة,,,,0,0,,0,,
+DEV-O08-3,O08,other,,low,خدمة الزبائن العامة,,,,0,0,,0,,
+DEV-K04-2,K04,card,,high,البطاقات,,,2026-10-07,1,0,,0,,
+DEV-W01-1,W01,wrong_recipient,,high,النزاعات والاسترداد,,25000,2026-10-04,0,0,,0,,wrong_recipient
+DEV-W05-1,W05,other,,medium,خدمة الزبائن العامة,,,,0,1,unclear_message,0,يطلب رجوع فلوس تحويل بدون ذكر شنو صار (فشل أو مستلم غلط),
+DEV-W02-3,W02,wrong_recipient,,high,النزاعات والاسترداد,,30000,,0,0,,0,,wrong_recipient
+DEV-G08-4,G08,agent_dispute,transfer_failed,medium,شبكة الوكلاء,,120000,,0,1,multiple_issues,1,,agent_dispute
+DEV-W08-1,W08,wrong_recipient,,high,النزاعات والاسترداد,,1000000,2026-10-14,0,0,,0,,wrong_recipient
+DEV-W07-4,W07,wrong_recipient,,high,النزاعات والاسترداد,,,,0,0,,0,,
+DEV-K04-5,K04,card,,high,البطاقات,,,2026-10-04,1,0,,0,,
+DEV-K04-1,K04,card,,high,البطاقات,,,,1,1,ambiguous_date,0,اليوم مذكور بدون شهر وهو بعد يوم الاستلام، فالشهر مو محسوم,
+DEV-G01-4,G01,other,,medium,خدمة الزبائن العامة,,15000,2026-10-07,0,1,unclear_message,0,إيداع ما نزل بدون ذكر وين انعمل (وكيل أو غيره),other
+DEV-W01-2,W01,wrong_recipient,,high,النزاعات والاسترداد,,100000,2026-10-07,0,0,,0,,wrong_recipient
+DEV-A10-5,A10,other,,low,خدمة الزبائن العامة,,,,0,1,unclear_message,0,,
+DEV-W01-4,W01,wrong_recipient,,high,النزاعات والاسترداد,,200000,,0,1,ambiguous_date,0,اليوم مذكور بدون شهر وهو بعد يوم الاستلام، فالشهر مو محسوم,wrong_recipient
+DEV-K07-5,K07,card,,medium,البطاقات,,,,0,0,,0,,
+DEV-K07-4,K07,card,,medium,البطاقات,,,,0,0,,0,,
+DEV-T06-5,T06,transfer_failed,,medium,العمليات والتحويلات,90019091,,,0,0,,0,,
+DEV-G03-3,G03,other,,medium,خدمة الزبائن العامة,,,2026-10-10,0,1,unclear_message,0,سحب ما وصل كاشه بدون ذكر وكيل أو صراف,
+DEV-W05-2,W05,wrong_recipient,,high,النزاعات والاسترداد,,,,0,0,,0,,
+DEV-W01-5,W01,wrong_recipient,,high,النزاعات والاسترداد,,120000,2026-10-08,0,0,,0,,wrong_recipient
+DEV-A07-3,A07,account_access,,medium,أمن الحسابات,,,,0,0,,0,,
+DEV-W05-3,W05,wrong_recipient,,high,النزاعات والاسترداد,,,,0,0,,0,,
+DEV-T10-2,T10,transfer_failed,,medium,العمليات والتحويلات,,40000,2026-10-09,0,0,,0,,transfer_failed
+DEV-A08-2,A08,account_access,,high,أمن الحسابات,5478823658,100000,2026-10-06,1,0,,0,,account_access
+DEV-W02-4,W02,wrong_recipient,,high,النزاعات والاسترداد,,60000,,0,0,,0,,wrong_recipient
+DEV-O04-1,O04,other,,low,خدمة الزبائن العامة,,,,0,0,,0,,
+DEV-A08-4,A08,other,,high,أمن الحسابات,4785082688,60000,,1,1,unclear_message,0,سحب يصرّح إنه صار بدون علمه، بدون ذكر شلون صار (دخول للحساب أو بطاقة),other
+DEV-T11-3,T11,transfer_failed,account_access,medium,العمليات والتحويلات,86591515,100000,,0,1,multiple_issues,0,,transfer_failed
+DEV-K10-5,K10,card,,medium,البطاقات,,,,0,0,,0,,
+DEV-T01-3,T01,transfer_failed,,medium,العمليات والتحويلات,78607234,100000,2026-10-05,0,0,,0,,transfer_failed
+DEV-W10-4,W10,wrong_recipient,,high,النزاعات والاسترداد,66329337,400000,,0,1,similar_names,0,,wrong_recipient
+DEV-K10-1,K10,card,,medium,البطاقات,,,,0,0,,0,,
+DEV-T10-5,T10,transfer_failed,,medium,العمليات والتحويلات,78643675,300000,,0,0,,0,,transfer_failed
+DEV-A08-5,A08,account_access,,high,أمن الحسابات,676594555,150000,2026-10-01,1,0,,0,,account_access
+DEV-G08-5,G08,transfer_failed,other,medium,العمليات والتحويلات,,250000,2026-10-01,0,1,multiple_issues,0,التحويل الفاشل واضح؛ الإيداع ما نزل بدون ذكر وكيل أو محل، فنوعه غامض,other
+DEV-A04-1,A04,account_access,,high,أمن الحسابات,,,2026-10-05,1,0,,0,,
+DEV-A02-2,A02,account_access,,medium,أمن الحسابات,,,,0,0,,0,,
+DEV-O02-4,O02,other,,low,خدمة الزبائن العامة,,,,0,0,,0,,
+DEV-G02-5,G02,agent_dispute,,medium,شبكة الوكلاء,,100000,2026-10-14,0,0,,0,,agent_dispute
+DEV-T04-1,T04,transfer_failed,,medium,العمليات والتحويلات,613398026,10000,2026-09-28,0,0,,0,,transfer_failed
+DEV-K10-2,K10,card,,medium,البطاقات,,,,0,0,,0,,
+DEV-K04-4,K04,card,,high,أمن الحسابات,,,2026-10-01,1,0,,0,,
+DEV-O04-2,O04,other,,low,خدمة الزبائن العامة,,,,0,0,,0,,
+DEV-K02-4,K02,card,,medium,البطاقات,,,2026-10-07,0,0,,0,,
+DEV-K10-3,K10,card,,medium,البطاقات,,,,0,0,,0,,
+DEV-A07-4,A07,account_access,,medium,أمن الحسابات,,,2026-10-12,0,0,,0,,
+DEV-A08-1,A08,other,,high,أمن الحسابات,93619109,400000,,1,1,unclear_message,0,سحب يصرّح إنه مو هو سواه، بدون ذكر شلون صار (دخول للحساب أو بطاقة),other
+DEV-T01-5,T01,transfer_failed,,medium,العمليات والتحويلات,80737257,120000,2026-10-10,0,0,,0,,transfer_failed
+DEV-G03-1,G03,agent_dispute,,medium,شبكة الوكلاء,,200000,,0,0,,0,,agent_dispute
+DEV-W02-2,W02,wrong_recipient,,high,النزاعات والاسترداد,,60000,,0,0,,0,,wrong_recipient
+DEV-W10-5,W10,wrong_recipient,,high,النزاعات والاسترداد,42602918,40000,,0,1,similar_names,0,,wrong_recipient
+DEV-G02-4,G02,other,,medium,خدمة الزبائن العامة,,,2026-10-06,0,1,unclear_message,0,عملية ما نجحت بدون ذكر نوعها ولا وين صارت,
+DEV-O04-3,O04,other,,low,خدمة الزبائن العامة,,,,0,0,,0,,
+DEV-K07-2,K07,card,,medium,البطاقات,,,,0,0,,0,,
+DEV-T04-2,T04,other,,medium,خدمة الزبائن العامة,,250000,2026-09-29,0,1,unclear_message,0,خصم مكرر بدون ذكر نوع العملية (تحويل، شراء، سحب),other
+DEV-O03-4,O03,other,,low,خدمة الزبائن العامة,,,,0,0,,0,,
+DEV-A04-5,A04,account_access,,high,أمن الحسابات,,,2026-10-03,1,0,,0,,
+DEV-T06-3,T06,transfer_failed,,medium,العمليات والتحويلات,5739901981,25000,,0,0,,0,,transfer_failed
+DEV-A10-3,A10,other,,low,خدمة الزبائن العامة,,,,0,1,unclear_message,0,,
+DEV-W08-5,W08,wrong_recipient,,high,النزاعات والاسترداد,71195829,2500000,2026-10-01,0,0,,0,,wrong_recipient
+DEV-G07-1,G07,agent_dispute,,high,شبكة الوكلاء,,2500000,2026-10-10,0,0,,0,,agent_dispute
+DEV-A10-1,A10,other,,medium,خدمة الزبائن العامة,,,,0,1,unclear_message,0,رصيده ما يطابق التحويلات بدون تحديد عملية,
+DEV-T02-1,T02,transfer_failed,,medium,العمليات والتحويلات,,35000,2026-10-12,0,0,,0,,transfer_failed
+DEV-A02-3,A02,account_access,,medium,أمن الحسابات,,,2026-09-22,0,0,,0,,
+DEV-O08-5,O08,other,,low,خدمة الزبائن العامة,,,,0,0,,0,,
+DEV-W02-1,W02,wrong_recipient,,high,النزاعات والاسترداد,,500000,2026-10-02,0,0,,0,,wrong_recipient
+DEV-G02-2,G02,other,,medium,خدمة الزبائن العامة,,150000,2026-10-08,0,1,unclear_message,0,عمولة على سحب بدون ذكر وين صار السحب (وكيل أو صراف),other
+DEV-K02-1,K02,card,,medium,البطاقات,,,2026-10-13,0,0,,0,,
+DEV-K08-2,K08,card,,medium,البطاقات,,,2026-10-08,0,0,,0,,
+DEV-A03-1,A03,account_access,,medium,أمن الحسابات,,,2026-09-30,0,0,,0,,
+DEV-W10-2,W10,wrong_recipient,,high,النزاعات والاسترداد,99332202,100000,,0,1,similar_names,0,,wrong_recipient
+DEV-O01-2,O01,other,,low,خدمة الزبائن العامة,,,,0,0,,0,,
+DEV-W02-5,W02,wrong_recipient,,high,النزاعات والاسترداد,,40000,,0,0,,0,,wrong_recipient
+DEV-T08-4,T08,transfer_failed,,high,العمليات والتحويلات,,2000000,,0,0,,0,,transfer_failed
+DEV-O03-1,O03,other,,low,خدمة الزبائن العامة,,,,0,0,,0,,
+DEV-O02-2,O02,other,,low,خدمة الزبائن العامة,,,,0,0,,0,,
+DEV-A03-5,A03,account_access,,medium,أمن الحسابات,,,2026-09-27,0,0,,0,,
+DEV-W07-2,W07,wrong_recipient,,high,النزاعات والاسترداد,77102601,100000,2026-10-01,0,0,,0,,wrong_recipient
+DEV-T11-4,T11,transfer_failed,account_access,medium,العمليات والتحويلات,,500000,2026-10-02,0,1,multiple_issues,0,,transfer_failed
+DEV-G08-3,G08,transfer_failed,other,medium,العمليات والتحويلات,,500000,,0,1,multiple_issues,0,التحويل الفاشل واضح؛ الإيداع ما نزل بدون ذكر وكيل أو محل، فنوعه غامض,other
+DEV-O01-4,O01,other,,low,خدمة الزبائن العامة,,,,0,0,,0,,
+DEV-T01-4,T01,transfer_failed,,medium,العمليات والتحويلات,,75000,2026-09-30,0,0,,0,,transfer_failed
+DEV-A07-5,A07,account_access,,medium,أمن الحسابات,,,,0,0,,0,,
+DEV-O03-3,O03,other,,low,خدمة الزبائن العامة,,,,0,0,,0,,
+DEV-T06-2,T06,transfer_failed,,medium,العمليات والتحويلات,987315171,75000,,0,0,,0,,transfer_failed
+DEV-W10-1,W10,wrong_recipient,,high,النزاعات والاسترداد,,20000,,0,1,similar_names,0,,wrong_recipient
+DEV-O01-5,O01,other,,low,خدمة الزبائن العامة,,,,0,0,,0,,
+DEV-K03-1,K03,card,,medium,البطاقات,858040915,200000,,0,0,,0,,card
+DEV-O08-1,O08,other,,low,خدمة الزبائن العامة,,,,0,0,,0,,
+DEV-G03-4,G03,other,,medium,خدمة الزبائن العامة,,,,0,1,unclear_message,0,سحب ما وصل كاشه بدون ذكر وكيل أو صراف,
+DEV-K02-5,K02,card,,medium,البطاقات,,,2026-10-13,0,0,,0,,
+DEV-T06-4,T06,transfer_failed,,medium,العمليات والتحويلات,,400000,,0,0,,0,,transfer_failed
+DEV-O09-4,O09,other,,low,خدمة الزبائن العامة,,,,0,1,possible_injection,0,,
+DEV-A03-4,A03,account_access,,medium,أمن الحسابات,,,2026-10-01,0,0,,0,,
+DEV-T06-1,T06,transfer_failed,,medium,العمليات والتحويلات,,75000,2026-10-04,0,0,,0,,transfer_failed
+DEV-K03-2,K03,card,,medium,البطاقات,5642035702,40000,2026-10-04,0,0,,0,,card
+DEV-W01-3,W01,wrong_recipient,,high,النزاعات والاسترداد,,40000,2026-10-12,0,0,,0,,wrong_recipient
+DEV-T04-3,T04,other,,medium,خدمة الزبائن العامة,,75000,2026-10-04,0,1,unclear_message,0,خصم مكرر بدون ذكر نوع العملية (تحويل، شراء، سحب),other
+DEV-G01-5,G01,agent_dispute,,medium,شبكة الوكلاء,,10000,,0,0,,0,,agent_dispute
+DEV-G01-1,G01,agent_dispute,,medium,شبكة الوكلاء,,,,0,0,,0,,
+DEV-T01-1,T01,transfer_failed,,medium,العمليات والتحويلات,64048857,400000,2026-10-05,0,0,,0,,transfer_failed
+DEV-K07-1,K07,card,,medium,البطاقات,,,,0,0,,0,,
+DEV-A04-2,A04,account_access,,high,أمن الحسابات,,,2026-10-07,1,0,,0,,
+DEV-T10-4,T10,transfer_failed,,medium,العمليات والتحويلات,555557968,40000,,0,0,,0,,transfer_failed
+DEV-A04-3,A04,account_access,,high,أمن الحسابات,,,2026-10-10,1,0,,0,,
+DEV-O04-4,O04,other,,low,خدمة الزبائن العامة,,,,0,0,,0,,
+DEV-O09-2,O09,other,,low,خدمة الزبائن العامة,,,,0,1,possible_injection,0,,
+DEV-G07-2,G07,agent_dispute,,high,شبكة الوكلاء,,3000000,2026-10-03,0,0,,0,,agent_dispute
+DEV-A03-2,A03,account_access,,medium,أمن الحسابات,,,2026-10-02,0,0,,0,,
+DEV-O03-5,O03,other,,low,خدمة الزبائن العامة,,,,0,0,,0,,
+DEV-A07-1,A07,account_access,,medium,أمن الحسابات,,,2026-10-06,0,0,,0,,
+DEV-K02-2,K02,card,,medium,البطاقات,,,2026-10-03,0,0,,0,,
+DEV-G07-3,G07,agent_dispute,,high,شبكة الوكلاء,,1000000,,0,1,ambiguous_date,0,اليوم مذكور بدون شهر وهو بعد يوم الاستلام، فالشهر مو محسوم,agent_dispute
+DEV-G02-1,G02,agent_dispute,,medium,شبكة الوكلاء,,150000,2026-10-03,0,0,,0,,agent_dispute
+DEV-A10-2,A10,other,,low,خدمة الزبائن العامة,,,,0,1,unclear_message,0,,
+DEV-O09-5,O09,other,,low,خدمة الزبائن العامة,,,,0,1,possible_injection,0,,
+DEV-W08-2,W08,transfer_failed,,high,العمليات والتحويلات,,1000000,,0,0,,0,,transfer_failed
+DEV-T04-4,T04,other,,medium,خدمة الزبائن العامة,,75000,2026-10-08,0,1,unclear_message,0,خصم مكرر بدون ذكر نوع العملية (تحويل، شراء، سحب),other
+DEV-A03-3,A03,account_access,,medium,أمن الحسابات,,,,0,0,,0,,
+DEV-G03-2,G03,agent_dispute,,medium,شبكة الوكلاء,,75000,,0,0,,0,,agent_dispute
+DEV-K08-1,K08,card,,medium,البطاقات,,150000,,0,0,,0,,card
+DEV-K08-4,K08,other,,medium,خدمة الزبائن العامة,,50000,2026-10-03,0,1,unclear_message,0,خصم ما يعرف سببه بدون ذكر بطاقة أو رسوم أو نوع العملية,other
+DEV-T02-5,T02,transfer_failed,,medium,العمليات والتحويلات,,400000,2026-10-07,0,0,,0,,transfer_failed
+DEV-W10-3,W10,wrong_recipient,,high,النزاعات والاسترداد,35227616,75000,2026-10-07,0,1,similar_names,0,,wrong_recipient
+DEV-K03-3,K03,card,,medium,البطاقات,3130366987,25000,2026-10-13,0,0,,0,,card
+DEV-T08-3,T08,transfer_failed,,high,العمليات والتحويلات,969946862,1500000,2026-10-03,0,0,,0,,transfer_failed
+DEV-W08-4,W08,other,,high,خدمة الزبائن العامة,458858318,1200000,2026-10-01,0,1,unclear_message,0,يذكر تحويل ورقمه ومستعجل بدون ما يگول شنو المشكلة,other
+DEV-W07-5,W07,wrong_recipient,,high,النزاعات والاسترداد,6359128651,250000,,0,0,,0,,wrong_recipient
+DEV-A07-2,A07,account_access,,medium,أمن الحسابات,,,2026-10-04,0,0,,0,,
+DEV-G01-2,G01,other,,medium,خدمة الزبائن العامة,,75000,2026-09-30,0,1,unclear_message,0,إيداع ما نزل بدون ذكر وين انعمل (وكيل أو غيره),other
+DEV-W08-3,W08,other,,high,خدمة الزبائن العامة,70404423,3000000,,0,1,unclear_message,0,يذكر تحويل ورقمه ومستعجل بدون ما يگول شنو المشكلة,other
+DEV-T02-2,T02,transfer_failed,,medium,العمليات والتحويلات,,,2026-09-25,0,0,,0,,
+DEV-K02-3,K02,card,,medium,البطاقات,,,2026-10-04,0,0,,0,,
+DEV-T02-4,T02,transfer_failed,,medium,العمليات والتحويلات,,30000,,0,0,,0,,transfer_failed
+DEV-G07-4,G07,agent_dispute,,high,شبكة الوكلاء,,1500000,2026-10-08,0,0,,0,,agent_dispute
+DEV-G02-3,G02,agent_dispute,,medium,شبكة الوكلاء,,400000,2026-10-13,0,0,,0,,agent_dispute
+DEV-W07-3,W07,wrong_recipient,,high,النزاعات والاسترداد,,,,0,1,ambiguous_date,0,اليوم مذكور بدون شهر وهو بعد يوم الاستلام، فالشهر مو محسوم,
+DEV-A08-3,A08,account_access,,high,أمن الحسابات,641717709,25000,,1,0,,0,,account_access
+DEV-K08-5,K08,card,,medium,البطاقات,,50000,2026-10-10,0,0,,0,,card
+DEV-O01-3,O01,other,,low,خدمة الزبائن العامة,,,,0,0,,0,,
+DEV-K03-5,K03,card,,medium,البطاقات,2997568844,400000,2026-10-01,0,0,,0,,card
+DEV-T08-1,T08,transfer_failed,,high,العمليات والتحويلات,71671827,1000000,2026-10-09,0,0,,0,,transfer_failed
+DEV-T04-5,T04,other,,medium,خدمة الزبائن العامة,,50000,2026-10-02,0,1,unclear_message,0,خصم مكرر بدون ذكر نوع العملية (تحويل، شراء، سحب),other
+DEV-O04-5,O04,other,,low,خدمة الزبائن العامة,,,,0,0,,0,,
+DEV-W07-1,W07,wrong_recipient,,high,النزاعات والاسترداد,,150000,,0,0,,0,,wrong_recipient
+DEV-T11-5,T11,transfer_failed,account_access,medium,العمليات والتحويلات,,,2026-09-27,0,1,multiple_issues,0,,
+DEV-T10-1,T10,transfer_failed,,medium,العمليات والتحويلات,24647414,20000,2026-10-08,0,0,,0,,transfer_failed
+DEV-T08-5,T08,transfer_failed,,high,العمليات والتحويلات,406731923,3000000,,0,1,ambiguous_date,0,اليوم مذكور بدون شهر وهو بعد يوم الاستلام، فالشهر مو محسوم,transfer_failed
+DEV-O08-4,O08,other,,low,خدمة الزبائن العامة,,,,0,0,,0,,
+DEV-O08-2,O08,other,,low,خدمة الزبائن العامة,,,,0,0,,0,,
+DEV-T01-2,T01,transfer_failed,,medium,العمليات والتحويلات,,20000,2026-10-08,0,0,,0,,transfer_failed
+DEV-O01-1,O01,other,,low,خدمة الزبائن العامة,,,,0,0,,0,,
+DEV-K03-4,K03,card,,medium,البطاقات,,300000,2026-10-08,0,0,,0,,card
+DEV-A02-1,A02,account_access,,medium,أمن الحسابات,,,,0,0,,0,,
+DEV-G08-1,G08,transfer_failed,other,medium,العمليات والتحويلات,,15000,,0,1,multiple_issues,0,التحويل الفاشل واضح؛ الإيداع ما نزل بدون ذكر وكيل أو محل، فنوعه غامض,other
+DEV-K08-3,K08,card,,medium,البطاقات,,20000,2026-10-06,0,0,,0,,card
+DEV-A02-5,A02,account_access,,medium,أمن الحسابات,,,,0,0,,0,,
+DEV-O09-3,O09,other,,low,خدمة الزبائن العامة,,,,0,1,possible_injection,0,,
+DEV-A02-4,A02,account_access,,medium,أمن الحسابات,,,2026-10-02,0,0,,0,,
+DEV-W05-4,W05,wrong_recipient,,high,النزاعات والاسترداد,,,,0,0,,0,,
+DEV-O02-1,O02,other,,low,خدمة الزبائن العامة,,,,0,0,,0,,
+DEV-T10-3,T10,transfer_failed,,medium,العمليات والتحويلات,,120000,,0,0,,0,,transfer_failed

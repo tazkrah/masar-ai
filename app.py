@@ -210,8 +210,35 @@ def state(r):
     return "flag" if r["needs_review"] else "review"
 
 
+def saved_values(r):
+    return {"draft": r["final_draft"] or r["draft"] or "", "cat": r["corrected_category"] or r["category"],
+            "note": r["note"] or ""}
+
+
+def current(r):
+    return {**saved_values(r), **ss["edits"].get(r["complaint_id"], {})}
+
+
+def routing(r):
+    """الأولوية والقسم حسب الفئة الحالية (الموديل أو تصحيح الموظف) بقواعد التوجيه كاملة، مو من الفئة وحدها."""
+    if r["status"] != "done":
+        return r["priority"], r["department"]
+    return pipeline.routing_for(r, current(r)["cat"])
+
+
+def amount_shown(r, cat):
+    """المبلغ ويا المشكلة اللي يخصها إذا مو المشكلة الحالية."""
+    text = config.format_amount(r["amount"])
+    owner = pipeline.amount_owner(r, cat)
+    if text is None or owner in (None, cat):
+        return text
+    if owner == "unclear":
+        return f"{text} (مو واضح يخص أي مشكلة)"
+    return f"{text} (يخص مشكلة ثانية بالرسالة: {CAT.get(owner, owner)})"
+
+
 def sort_key(r):
-    return ORDER.index(r["state"]), PRI_ORDER[r["priority"]], r["row_number"]
+    return ORDER.index(r["state"]), PRI_ORDER[routing(r)[0]], r["row_number"]
 
 
 def label_id(r):
@@ -402,15 +429,6 @@ if "run" in ss:
 
 
 # ------------------------------------------------------------------ تعديلات غير محفوظة
-def saved_values(r):
-    return {"draft": r["final_draft"] or r["draft"] or "", "cat": r["corrected_category"] or r["category"],
-            "note": r["note"] or ""}
-
-
-def current(r):
-    return {**saved_values(r), **ss["edits"].get(r["complaint_id"], {})}
-
-
 def is_dirty(r):
     return r["status"] == "done" and current(r) != saved_values(r)
 
@@ -458,7 +476,7 @@ with list_col:
         for r in items[page * PAGE_SIZE:(page + 1) * PAGE_SIZE]:
             cid, s = r["complaint_id"], r["state"]
             meta = [CAT[current(r)["cat"]]] if r["status"] == "done" else []
-            if r["priority"] == "high":
+            if routing(r)[0] == "high":
                 meta.append("أولوية عالية")
             line1 = f"**:{STATE_MD[s]}[{STATES[s]}]**"
             if meta:
@@ -547,12 +565,13 @@ def body():
             elif r["corrected_category"]:
                 st.markdown(f'<span class="tag-unsaved" style="color:var(--muted)">صحّحته؛ الموديل قال «{esc(CAT[r["category"]])}»</span>',
                             unsafe_allow_html=True)
-        fact(c1[1], "الأولوية", PRI[r["priority"]], cls="high" if r["priority"] == "high" else "")
-        fact(c1[2], "القسم", config.ROUTING[cur["cat"]])
+        prio, dept = routing(r)
+        fact(c1[1], "الأولوية", PRI[prio], cls="high" if prio == "high" else "")
+        fact(c1[2], "القسم", dept)
         fact(c1[3], "الثقة", f"{r['confidence'] * 100:.0f}%", ltr=True)
         c2 = st.columns(4, gap="medium")
         fact(c2[0], "رقم العملية", r["transaction_id"], "transaction_id", ltr=True)
-        fact(c2[1], "المبلغ", config.format_amount(r["amount"]), "amount")
+        fact(c2[1], "المبلغ", amount_shown(r, cur["cat"]), "amount")
         fact(c2[2], "تاريخ المشكلة", r["date"], "date", ltr=True)
         if r["reason"]:
             st.markdown(f'<div class="why"><b>سبب التصنيف:</b> {esc(r["reason"])}</div>', unsafe_allow_html=True)

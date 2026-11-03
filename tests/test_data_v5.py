@@ -1,4 +1,4 @@
-"""نسخة البيانات 5 وقواعد v5: الغموض، الشكوى المالية، العملية غير المصرح بها، الإيداع، التاريخ، ترتيب المشكلتين.
+"""نسخ البيانات 5 و 6 وقواعد v5: الغموض، الشكوى المالية، العملية غير المصرح بها، الإيداع، التاريخ، ترتيب المشكلتين.
 
 بدون اتصال بالموديل. رسائل الاختبار مكتوبة يدوياً ومو من بيانات التطوير أو الضبط أو الاختبار.
 مجموعتي الضبط والاختبار ما تنقرا هنا: بس بصمة ملفاتها تنقارن بالـ manifest.
@@ -64,7 +64,7 @@ def run(message, received_at="2026-11-03 10:00", **answer):
 class DataVersionTests(unittest.TestCase):
     def test_messages_and_frozen_splits_unchanged(self):
         m = manifest()
-        self.assertEqual(m["data_version"], 5)
+        self.assertEqual(m["data_version"], lc.DATA_VERSION)
         self.assertEqual(sha(DATA / "dev.csv"), m["splits"]["dev"]["sha256"])
         self.assertEqual(sha(DATA / "labels" / "dev_labels.csv"), m["splits"]["dev"]["labels_sha256"])
         for sp in ("calib", "test"):  # البصمة بس، بدون قراءة المحتوى
@@ -72,24 +72,28 @@ class DataVersionTests(unittest.TestCase):
             self.assertEqual(sha(DATA / "labels" / f"{sp}_labels.csv"), m["splits"][sp]["labels_sha256"], sp)
 
     def test_every_correction_logged_with_old_new_reason(self):
-        rev = manifest()["revisions"][-1]
-        self.assertEqual(rev["data_version"], 5)
-        self.assertEqual(rev["messages_changed"], [])
-        logged = {c["id"]: c for c in rev["label_changes"]}
-        self.assertEqual(set(logged), set(lc.DEV_V5))
-        for cid, c in logged.items():
-            self.assertTrue(c["from"] and c["to"] and c["reason"], cid)
-            self.assertEqual(set(c["from"]), set(c["to"]), cid)
+        revs = {r["data_version"]: r for r in manifest()["revisions"]}
+        for v, corrs in lc.VERSIONS.items():
+            rev = revs[v]
+            self.assertEqual(rev["messages_changed"], [])
+            logged = {c["id"]: c for c in rev["label_changes"]}
+            self.assertEqual(set(logged), set(corrs), v)
+            for cid, c in logged.items():
+                self.assertTrue(c["from"] and c["to"] and c["reason"], cid)
+                self.assertEqual(set(c["from"]), set(c["to"]), cid)
 
     def test_reverting_log_reproduces_v4_labels(self):
         """سجل التصحيحات كامل: نرجّع القيم القديمة ونشيل الأعمدة الجديدة، يطلع ملف نسخة 4 بنفس البصمة."""
-        rev = manifest()["revisions"][-1]
-        self.assertEqual(rev["labels_sha256_before"], V4_LABELS_SHA)
+        revs = [r for r in manifest()["revisions"] if r["data_version"] > 4]
+        self.assertEqual(revs[0]["labels_sha256_before"], V4_LABELS_SHA)
         labels, _ = dev()
         by_id = {r["complaint_id"]: r for r in labels}
-        for c in rev["label_changes"]:
-            by_id[c["id"]].update(c["from"])
-        fields = [f for f in labels[0] if f not in rev["new_columns"]]
+        dropped = set()
+        for rev in reversed(revs):
+            for c in rev["label_changes"]:
+                by_id[c["id"]].update(c["from"])
+            dropped |= set(rev["new_columns"])
+        fields = [f for f in labels[0] if f not in dropped]
         buf = io.StringIO(newline="")
         w = csv.DictWriter(buf, fieldnames=fields, extrasaction="ignore")
         w.writeheader()
@@ -98,19 +102,23 @@ class DataVersionTests(unittest.TestCase):
 
     def test_priority_and_department_follow_rules(self):
         labels, _ = dev()
+        corrs, unauthorized = lc.corrections(), lc.unauthorized_ids()
         for l in labels:
-            corr = lc.DEV_V5.get(l["complaint_id"], {})
+            corr = corrs.get(l["complaint_id"], {})
             amount = int(l["amount"]) if l["amount"] else None
             self.assertEqual(l["priority"], config.priority_for(l["category"], amount, l["security_risk"] == "1",
                                                                 corr.get("money_issue", False)), l["complaint_id"])
-            self.assertEqual(l["department"],
-                             config.department_for(l["category"], bool(corr.get("set", {}).get("unauthorized"))),
+            self.assertEqual(l["department"], config.department_for(l["category"], l["complaint_id"] in unauthorized),
                              l["complaint_id"])
+        for cid in unauthorized:  # التصريح بعملية مو مأذونة: خطر وأولوية عالية وأمن الحسابات مهما كانت الفئة
+            l = next(x for x in labels if x["complaint_id"] == cid)
+            self.assertEqual((l["security_risk"], l["priority"], l["department"]),
+                             ("1", "high", config.ROUTING["account_access"]), cid)
 
     def test_unclear_labels_reviewed_with_note(self):
         labels, _ = dev()
         for l in labels:
-            if l["hard_type"] in ("unclear_message", "ambiguous_date") and l["complaint_id"] in lc.DEV_V5:
+            if l["hard_type"] in ("unclear_message", "ambiguous_date") and l["complaint_id"] in lc.corrections():
                 self.assertEqual(l["expect_review"], "1", l["complaint_id"])
                 self.assertTrue(l["review_note"], l["complaint_id"])
 
@@ -147,10 +155,10 @@ class PriorityRoutingTests(unittest.TestCase):
         self.assertEqual(config.priority_for("other", 1_200_000, False, money_issue=True), "high")
         self.assertEqual(config.priority_for("other", None, True, money_issue=True), "high")
 
-    def test_unauthorized_routing(self):
-        self.assertEqual(config.department_for("other", unauthorized=True), config.ROUTING["account_access"])
-        self.assertEqual(config.department_for("other"), config.ROUTING["other"])
-        self.assertEqual(config.department_for("card", unauthorized=True), config.ROUTING["card"])
+    def test_unauthorized_routing_any_category(self):
+        for cat in config.CATEGORIES:
+            self.assertEqual(config.department_for(cat, unauthorized=True), config.ROUTING["account_access"], cat)
+            self.assertEqual(config.department_for(cat), config.ROUTING[cat], cat)
 
 
 class AnalyzeV5Tests(unittest.TestCase):

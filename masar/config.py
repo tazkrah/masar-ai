@@ -91,6 +91,8 @@ REVIEW_REASON_LABELS = {
     "unsupported_date": "الموديل طلّع تاريخ والرسالة ما بيها أي تاريخ أو وقت (انشال التاريخ)",
     "ambiguous_date": "اليوم مذكور بدون شهر وهو بعد يوم الاستلام، فالشهر مو محسوم (التاريخ يبقى فارغ)",
     "money_issue_unclassified": "شكوى مالية ونوع العملية مو واضح (سحب، إيداع، تحويل، بطاقة)",
+    "amount_for_second_issue": "المبلغ يخص المشكلة الثانية بالرسالة، مو الأساسية (تأكد إن المسودة تربطه بيها)",
+    "amount_issue_unclear": "مو واضح المبلغ يخص أي مشكلة بالرسالة",
     "draft_unsupported_date": "المسودة بيها تاريخ مو مذكور بالرسالة",
     "draft_forbidden_phrase": "المسودة بيها وعد أو عبارة ممنوعة",
     "message_too_long": "الرسالة طويلة وانقطعت",
@@ -141,8 +143,8 @@ def priority_for(category: str, amount: int | None, security_risk: bool, money_i
 
 
 def department_for(category: str, unauthorized: bool = False) -> str:
-    """جدول التوجيه، ويا استثناء واحد: عملية يصرّح الزبون إنه ما سواها («مو آني»، «بدون علمي») وفئتها غامضة
-    تروح لأمن الحسابات بدال خدمة الزبائن العامة. الفئات الواضحة تبقى على قسمها."""
-    if unauthorized and category == "other":
+    """جدول التوجيه، ويا قاعدة وحدة فوقه: عملية يصرّح الزبون إنها مو مأذونة («مو آني سويتها»، «بدون علمي»)
+    تروح لأمن الحسابات مهما كانت الفئة (وأولويتها عالية لأنها خطر أمني). نسخة البيانات 6."""
+    if unauthorized:
         return ROUTING["account_access"]
     return ROUTING[category]

@@ -141,6 +141,7 @@ def score(results, labels, threshold):
     auto, auto_ok = 0, 0
     reasons = Counter()
     conf = defaultdict(Counter)
+    conflicts, amount_link = [], [0, 0]
 
     for r in done:
         g = labels[r["source_id"]]
@@ -157,6 +158,12 @@ def score(results, labels, threshold):
                 field_ok[f] += 1
             else:
                 mism.append(f"{f}: متوقع={g[f] or 'فارغ'} طلع={r[f] if r[f] is not None else 'فارغ'}")
+        if r.get("unauthorized_operation") and g["department"] != r["department"]:
+            # سياسة النسخة 6: المصرّح إنها مو مأذونة = أمن الحسابات مهما كانت الفئة. إجابات الضبط والاختبار أقدم منها
+            conflicts.append({"id": r["source_id"], "label_department": g["department"], "department": r["department"]})
+        if g.get("amount_category") and g["secondary_category"]:  # المبلغ يخص أي مشكلة، بالرسائل اللي بيها مشكلتين
+            amount_link[1] += 1
+            amount_link[0] += pipeline.amount_owner(r) == g["amount_category"]
         prio_ok += g["priority"] == r["priority"]
         dept_ok += g["department"] == r["department"]
         needs_review = bool(r["review_reasons"])
@@ -207,6 +214,11 @@ def score(results, labels, threshold):
         "review_rate": sum(1 for r in done if r["review_reasons"]) / n if n else None,
         "hard_cases_sent_to_review": f"{review_hits}/{review_expected}",
         "review_reasons": dict(reasons),
+        "amount_issue_link": f"{amount_link[0]}/{amount_link[1]}" if amount_link[1] else None,
+        "unauthorized_routing_conflicts": conflicts,
+        "unauthorized_routing_note": ("شكاوى الموديل علّمها عملية مو مأذونة ووجّهها لأمن الحسابات، والإجابة الصحيحة بقسم ثاني. "
+                                      "بالضبط والاختبار هذا متوقع لأن إجاباتهم قبل سياسة النسخة 6؛ بالتطوير يعني اختلاف ويا المراجعة.")
+                                     if conflicts else None,
         "confusion": {g: dict(c) for g, c in conf.items()},
         "threshold": threshold,
         "avg_latency_ms": sum(r["latency_ms"] or 0 for r in done) / n if n else None,

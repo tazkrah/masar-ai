@@ -135,7 +135,9 @@ def connect(path=None):
 
 # أعمدة انضافت بعد أول نسخة. القواعد القديمة تنحدّث بإضافتها فقط، بدون ما نغيّر أي سطر موجود.
 MIGRATIONS = {"results": [("run_id", "TEXT"), ("run_started_at", "TEXT"), ("secondary_category", "TEXT"),
-                          ("raw_output", "TEXT")],  # raw_output: جواب الفهم الخام من الموديل قبل الحماية (JSON)
+                          ("raw_output", "TEXT"),  # raw_output: جواب الفهم الخام من الموديل قبل الحماية (JSON)
+                          # v5: شكوى مالية، تصريح بعملية مو مأذونة، والمبلغ يخص أي مشكلة (primary | secondary | unclear)
+                          ("money_issue", "INTEGER"), ("unauthorized_operation", "INTEGER"), ("amount_issue", "TEXT")],
               "llm_calls": [("cached_tokens", "INTEGER"), ("rate_headers", "TEXT"), ("usage_raw", "TEXT")]}
 
 

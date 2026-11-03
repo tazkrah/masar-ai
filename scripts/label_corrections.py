@@ -1,4 +1,4 @@
-"""تصحيحات الإجابات الصحيحة لرسائل محددة بعد المراجعة اليدوية (نسخة البيانات 5، مجموعة التطوير فقط).
+"""تصحيحات الإجابات الصحيحة لرسائل محددة بعد المراجعة اليدوية (نسخ البيانات 5 و 6، مجموعة التطوير فقط).
 
 القرار: الإجابة الصحيحة تستند لنص الرسالة ومعناها، مو لتفاصيل السيناريو اللي ما ظهرت بالرسالة.
 كل تصحيح يحدد القيم الجديدة وسببه. الأولوية والقسم ما ينكتبون هنا: ينحسبون بـ config.priority_for و
@@ -8,10 +8,23 @@ expect: الفئة القديمة المتوقعة، حتى التصحيح ما 
 نصوص الرسائل والتقسيم ما تتغير. مجموعتي الضبط والاختبار ما انفتحت ولا تنطبق عليها هالتصحيحات.
 """
 
-DATA_VERSION = 5
+DATA_VERSION = 6
 
-# أعمدة جديدة بملف الإجابات (القيمة الافتراضية للرسائل غير المصححة)
-NEW_COLUMNS = {"accepted_swap": "0", "review_note": ""}
+# أعمدة جديدة بملف الإجابات لكل نسخة. القيمة الافتراضية للرسائل غير المصححة (دالة = تنحسب من الإجابة).
+NEW_COLUMNS = {
+    5: {"accepted_swap": "0", "review_note": ""},
+    # amount_category: المشكلة اللي يخصها المبلغ. الافتراضي: الفئة الأساسية إذا اكو مبلغ.
+    6: {"amount_category": lambda l: l["category"] if l.get("amount") else ""},
+}
+
+
+def column_defaults(label, upto=DATA_VERSION):
+    out = {}
+    for v in sorted(NEW_COLUMNS):
+        if v <= upto:
+            for k, d in NEW_COLUMNS[v].items():
+                out[k] = d({**label, **out}) if callable(d) else d
+    return out
 
 _UNCLEAR = {"category": "other", "secondary_category": "", "expect_review": 1, "hard_type": "unclear_message"}
 
@@ -95,13 +108,53 @@ DEV_V5 = {
 }
 
 
-def apply(label: dict, corr: dict, config) -> dict:
-    """يرجع الإجابة بعد التصحيح. الأولوية والقسم من قواعد النظام."""
-    out = {**NEW_COLUMNS, **label}
+# نسخة 6: العملية غير المصرح بها تروح لأمن الحسابات مهما كانت الفئة، والمبلغ مرتبط بمشكلته.
+DEV_V6 = {
+    "DEV-K04-4": {"expect": "card", "set": {"unauthorized": True},
+                  "reason": "يصرّح إن أحد حاول يسحب من حسابه (عملية مو مأذونة) ويا ضياع البطاقة: حسب قاعدة النسخة 6 "
+                            "القسم أمن الحسابات والأولوية عالية، والفئة تبقى البطاقة."},
+    **{cid: {"expect": "transfer_failed", "set": {"amount_category": "other"},
+             "reason": "المبلغ بالرسالة مبلغ الإيداع (المشكلة الثانية الغامضة)، مو مبلغ التحويل الفاشل."}
+       for cid in ("DEV-G08-1", "DEV-G08-3", "DEV-G08-5")},
+}
+
+VERSIONS = {5: DEV_V5, 6: DEV_V6}
+
+
+def corrections(upto=DATA_VERSION):
+    """كل التصحيحات لحد نسخة معينة، مدموجة لكل رسالة (الأحدث يكمّل الأقدم). expect من أول تصحيح."""
+    out = {}
+    for v in sorted(VERSIONS):
+        if v > upto:
+            break
+        for cid, c in VERSIONS[v].items():
+            if cid not in out:
+                out[cid] = {"expect": c["expect"], "set": {}, "reason": c["reason"]}
+            out[cid]["set"].update(c["set"])
+            if "money_issue" in c:
+                out[cid]["money_issue"] = c["money_issue"]
+    return out
+
+
+def unauthorized_ids(upto=DATA_VERSION):
+    """رسائل التطوير اللي الزبون يصرّح بيها بعملية مو مأذونة، حسب المراجعة اليدوية."""
+    return {cid for cid, c in corrections(upto).items() if c["set"].get("unauthorized")} | UNAUTHORIZED_NO_CHANGE
+
+
+# تصريح بعملية مو مأذونة، وفئتها وقسمها أصلاً أمن الحسابات، فما احتاجت تصحيح.
+UNAUTHORIZED_NO_CHANGE = {"DEV-A08-2", "DEV-A08-3", "DEV-A08-5"}
+
+
+def apply(label: dict, corr: dict, config, upto=DATA_VERSION) -> dict:
+    """يرجع الإجابة بعد التصحيح. الأولوية والقسم من قواعد النظام. corr: تصحيح مدموج (corrections())."""
+    out = dict(label)
     for k, v in corr["set"].items():
         if k not in ("unauthorized",):
             out[k] = str(v)
+    out = {**column_defaults(out, upto), **out}  # الافتراضي من الإجابة بعد التصحيح (مثلاً الفئة الجديدة)
     unauthorized = bool(corr["set"].get("unauthorized"))
+    if unauthorized:
+        out["security_risk"] = "1"  # التصريح بعملية مو مأذونة = خطر أمني
     amount = int(out["amount"]) if out["amount"] not in ("", None) else None
     out["priority"] = config.priority_for(out["category"], amount, out["security_risk"] in ("1", 1),
                                           corr.get("money_issue", False))
