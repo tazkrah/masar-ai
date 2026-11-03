@@ -47,7 +47,7 @@ class IngestTests(unittest.TestCase):
 
 class ValidateTests(unittest.TestCase):
     def test_arabic_digits_txid_ok(self):
-        f, r = pipeline.validate(BASE, "حولت البارحة، رقم العملية ١٢٣٤٥", "2026-10-05")
+        f, r = pipeline.validate(BASE, "حولت ٥٠ الف البارحة، رقم العملية ١٢٣٤٥", "2026-10-05")
         self.assertEqual(f["transaction_id"], "12345")
         self.assertEqual(r, [])
 
@@ -181,7 +181,7 @@ class DateGroundingTests(unittest.TestCase):
         self.assertEqual(out["needs_review"], 1)
 
     def test_supported_relative_date_kept(self):
-        f, r = pipeline.validate({**BASE, "date": "2026-10-04"}, "حولت البارحة رقم العملية 12345", "2026-10-05 10:00")
+        f, r = pipeline.validate({**BASE, "date": "2026-10-04"}, "حولت 50 الف البارحة رقم العملية 12345", "2026-10-05 10:00")
         self.assertEqual(f["date"], "2026-10-04")
         self.assertEqual(r, [])
 

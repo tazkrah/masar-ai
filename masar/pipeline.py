@@ -81,10 +81,17 @@ def validate(extracted: dict, message: str, received_at: str | None):
 
     amount = extracted.get("amount_iqd")
     if amount is not None:
-        if isinstance(amount, int) and 250 <= amount <= 100_000_000:
-            fields["amount"] = amount
-        else:
+        if not (isinstance(amount, int) and AMOUNT_MIN <= amount <= AMOUNT_MAX):
             reasons.append("invalid_amount")
+        else:
+            # المبلغ لازم يطابق مبلغ مكتوب بالرسالة بأي صيغة («خمسمية الف» = 500000). ما نصحح ولا نختار بداله.
+            found = message_amounts(message, fields["transaction_id"])
+            if amount in found:
+                fields["amount"] = amount
+                if len(found) > 1:
+                    reasons.append("multiple_amounts")  # الموظف يتأكد إن المبلغ المختار يخص المشكلة الصحيحة
+            else:
+                reasons.append("amount_not_in_message")
 
     d = extracted.get("date")
     unclear_days = ambiguous_days(message, received_at)
@@ -237,6 +244,74 @@ def _message_number_values(message):
     t = (message or "").translate(ARABIC_DIGITS)
     vals = {int(n) for n in re.findall(r"\d+", re.sub(r"(?<=\d)[,،٬](?=\d{3})", "", t))}
     return vals | {v for _, v in number_values(t)}
+
+
+AMOUNT_MIN, AMOUNT_MAX = 250, 100_000_000
+
+# أرقام مو مبالغ: تواريخ، يوم الشهر، وأرقام العمليات (بعد # أو «رقم…»). تنشال قبل البحث عن المبالغ.
+_SEP = r"[-‑–/.]"
+_NOT_AMOUNT_RES = [
+    re.compile(rf"\d{{4}}\s*{_SEP}\s*\d{{1,2}}\s*{_SEP}\s*\d{{1,2}}"),
+    re.compile(rf"\d{{1,2}}\s*{_SEP}\s*\d{{1,2}}\s*{_SEP}\s*\d{{4}}"),
+    re.compile(r"(?<![\d,،٬.])\d{1,2}\s*[-‑–/]\s*\d{1,2}(?![\d,،٬])"),
+    re.compile(r"[وب]?يوم\s*\d{1,2}(?!\d)"),
+]
+_TX_NUMBER_RE = re.compile(r"(?:#|رقم\w*\s+(?:(?:ال)?(?:عملية|معاملة|تحويل|تحويلة|حوالة|طلب)\w*\s+)?(?:(?:هو|هي|:)\s*)?#?)"
+                           r"\s*(\d[\d \-]{2,}\d)")
+# كسر عشري ويا مرتبة: «1.5 مليون»، «2.5 مليون»
+_DECIMAL_SCALE_RE = re.compile(r"(?<![\d,،٬])(\d+)[.٫](\d+)\s*(مليون|الف|ألف)")
+
+
+def _mask_non_amounts(text, txid=None):
+    """النص بعد تبديل التواريخ وأرقام العمليات بمسافات (نفس الطول)، حتى ما تنحسب مبالغ."""
+    t = (text or "").translate(ARABIC_DIGITS)
+    spans = [m.span() for rx in _NOT_AMOUNT_RES for m in rx.finditer(t)]
+    spans += [m.span(1) for m in _TX_NUMBER_RE.finditer(t)]
+    d = _digits_only(txid)
+    if d:  # رقم العملية المسنود، حتى لو مكتوب بمسافات
+        spans += [m.span() for m in re.finditer(r"(?<!\d)" + r"[ \-]?".join(d) + r"(?!\d)", t)]
+    for a, b in spans:
+        t = t[:a] + " " * (b - a) + t[b:]
+    return t
+
+
+def _amount_mentions(text, txid=None):
+    """المبالغ المحتملة بالنص: [(النص، القيمة، شكل_مبلغ)]. شكل_مبلغ = بيه ألف/مليون/دينار أو مكتوب بالحروف.
+
+    بدون التواريخ وأرقام العمليات، وبس القيم ضمن مدى المبالغ المعقولة.
+    """
+    t = _mask_non_amounts(text, txid)
+    out = []
+    for m in _DECIMAL_SCALE_RE.finditer(t):
+        scale = 1_000_000 if m.group(3) == "مليون" else 1000
+        out.append((m.group(0), round(float(f"{m.group(1)}.{m.group(2)}") * scale), True))
+        t = t[:m.start()] + " " * (m.end() - m.start()) + t[m.end():]
+    for m in _AMOUNT_RE.finditer(t):
+        out.append((m.group(0).strip(), _amount_value(m), bool(m.group(2) or m.group(3))))
+    out += [(str(v), v, True) for v in _word_numbers(t)]
+    return [x for x in out if AMOUNT_MIN <= x[1] <= AMOUNT_MAX]
+
+
+def message_amounts(message, txid=None) -> set[int]:
+    """قيم المبالغ المكتوبة بالرسالة بأي صيغة: «٧٥ الف»، «75,000 دينار»، «مية وخمسين الف»، «مليون ونص»."""
+    return {v for _, v, _ in _amount_mentions(message, txid)}
+
+
+def draft_unsupported_amounts(draft: str, message: str, txid=None):
+    """مبالغ بالمسودة قيمتها مو مكتوبة بالرسالة. يرجع النصوص مثل ما انكتبت.
+
+    الرقم المجرد (بلا ألف أو دينار) اللي مكتوب حرفياً بالرسالة (مثلاً رقم عملية) ما ينحسب مبلغ.
+    """
+    allowed = message_amounts(message, txid)
+    msg = (message or "").translate(ARABIC_DIGITS)
+    runs = set(re.findall(r"\d+", msg)) | set(re.findall(r"\d+", re.sub(r"(?<=\d)[\s\-](?=\d)", "", msg)))
+    out = []
+    for raw, value, shaped in _amount_mentions(draft, txid):
+        if value in allowed or (not shaped and str(value) in runs):
+            continue
+        if raw not in out:
+            out.append(raw)
+    return out
 
 
 def format_amounts_in_draft(draft: str, amount: int | None) -> str:
@@ -472,7 +547,8 @@ def reason_unsupported(reason: str, message: str):
 
 def approval_blockers(draft: str, message: str | None = None, fields: dict | None = None) -> list[str]:
     """أسباب تمنع اعتماد المسودة (الأصلية أو المعدّلة أو المعاد كتابتها): عبارة ممنوعة، وعد أو ادعاء إجراء،
-    طلب معلومة حساسة أو ما نحتاجها، أو طلب معلومة الزبون كتبها أصلاً (fields: الحقول المحفوظة للشكوى).
+    طلب معلومة حساسة أو ما نحتاجها، أو طلب معلومة الزبون كتبها أصلاً (fields: الحقول المحفوظة للشكوى)،
+    أو مبلغ قيمته مو مكتوبة بالرسالة.
 
     نفس القواعد اللي يستخدمها فحص المسودة بعد المودل (draft_review_reasons).
     """
@@ -481,6 +557,9 @@ def approval_blockers(draft: str, message: str | None = None, fields: dict | Non
     out += [f"طلب معلومة حساسة: {s}" for s in sensitive_requests(draft)]
     out += [f"طلب معلومة ما نحتاجها: {s}" for s in not_needed_requests(draft)]
     out += [f"طلب {config.FIELD_LABELS[f]} وهو مذكور برسالة الزبون: {s}" for f, s in known_info_requests(draft, fields, message)]
+    if message is not None:
+        out += [f"مبلغ مو مذكور برسالة الزبون: {a}"
+                for a in draft_unsupported_amounts(draft, message, (fields or {}).get("transaction_id"))]
     return out
 
 
@@ -493,6 +572,7 @@ def draft_review_reasons(draft, message, date_field, category, secondary_categor
         ("draft_sensitive_request", sensitive_requests(draft)),
         ("draft_not_needed_request", not_needed_requests(draft)),
         ("draft_known_info_request", known_info_requests(draft, fields, message)),
+        ("draft_unsupported_amount", draft_unsupported_amounts(draft, message, (fields or {}).get("transaction_id"))),
         ("draft_irrelevant_request", irrelevant_requests(draft, message)),
         ("draft_missing_issue", draft_missing_issue(draft, secondary_category, category)),
         ("draft_too_long", len(draft or "") > config.MAX_DRAFT_CHARS),
