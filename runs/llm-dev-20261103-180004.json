@@ -1,0 +1,228 @@
+{
+  "n": 5,
+  "processed": 5,
+  "failed": 0,
+  "failures": [],
+  "category_accuracy": 0.4,
+  "category_accuracy_strict": 0.4,
+  "category_accuracy_note": "category_accuracy تقبل تبديل الأساسية والثانوية بس بالرسائل المعلّمة accepted_swap=1؛ strict تطلب نفس الأساسية دائماً.",
+  "category_macro_f1_present_classes": 0.375,
+  "category_macro_f1_all_classes": 0.25,
+  "classes_absent_from_sample": [
+    "account_access",
+    "agent_dispute"
+  ],
+  "class_coverage_note": "الفئات الغايبة عن العينة (account_access، agent_dispute) ما إلها أمثلة، فالـ F1 مالتها ما ينقاس. macro-F1 لكل الفئات يحسبها صفر وينزل بدون سبب حقيقي.",
+  "class_coverage": {
+    "transfer_failed": {
+      "gold": 2,
+      "predicted": 2,
+      "f1": 0.5
+    },
+    "wrong_recipient": {
+      "gold": 1,
+      "predicted": 1,
+      "f1": 1.0
+    },
+    "account_access": {
+      "gold": 0,
+      "predicted": 0,
+      "f1": null
+    },
+    "agent_dispute": {
+      "gold": 0,
+      "predicted": 0,
+      "f1": null
+    },
+    "card": {
+      "gold": 0,
+      "predicted": 1,
+      "f1": 0.0
+    },
+    "other": {
+      "gold": 2,
+      "predicted": 1,
+      "f1": 0.0
+    }
+  },
+  "category_accuracy_lenient_multi": 0.6,
+  "field_exact": {
+    "transaction_id": 1.0,
+    "amount": 0.8,
+    "date": 1.0
+  },
+  "field_exact_all3": 0.8,
+  "priority_accuracy": 1.0,
+  "department_accuracy_all": 0.6,
+  "auto_routed_share": 0.6,
+  "auto_routed_department_accuracy": 0.6666666666666666,
+  "review_rate": 0.4,
+  "hard_cases_sent_to_review": "2/4",
+  "review_reasons": {
+    "ambiguous_date": 1,
+    "invalid_date": 1,
+    "multiple_issues": 1,
+    "money_issue_unclassified": 1
+  },
+  "amount_issue_link": "1/1",
+  "unauthorized_routing_conflicts": [],
+  "unauthorized_routing_note": null,
+  "confusion": {
+    "wrong_recipient": {
+      "wrong_recipient": 1
+    },
+    "other": {
+      "card": 1,
+      "transfer_failed": 1
+    },
+    "transfer_failed": {
+      "other": 1,
+      "transfer_failed": 1
+    }
+  },
+  "threshold": 0.75,
+  "avg_latency_ms": 3474.0,
+  "tokens": {
+    "input": 16709,
+    "output": 1660,
+    "rows_with_unknown_tokens": 0
+  },
+  "est_cost_usd": 0.0,
+  "raw_vs_guarded": {
+    "rows_with_raw": 5,
+    "rows_without_raw": 0,
+    "guard_review_reasons": {
+      "ambiguous_date": 1,
+      "invalid_date": 1,
+      "money_issue_unclassified": 1
+    },
+    "field_exact": {
+      "raw": {
+        "transaction_id": 1.0,
+        "amount": 0.8,
+        "date": 0.8
+      },
+      "guarded": {
+        "transaction_id": 1.0,
+        "amount": 0.8,
+        "date": 1.0
+      }
+    },
+    "fields_changed_by_guard": {
+      "transaction_id": 0,
+      "amount": 0,
+      "date": 1
+    },
+    "review_rate": {
+      "raw": 0.2,
+      "guarded": 0.4
+    },
+    "hard_cases_sent_to_review": {
+      "raw": "1/4",
+      "guarded": "2/4"
+    }
+  },
+  "errors": [
+    {
+      "id": "DEV-A08-4",
+      "family": "A08",
+      "message": "سحبوا من حسابي 60000 دينار ورقم العملية ٤٧٨٥٠٨٢٦٨٨ بدون علمي.",
+      "category": "other -> card",
+      "priority": "صح",
+      "fields": [],
+      "confidence": 0.95,
+      "review_reasons": [],
+      "expected_review": "unclear_message",
+      "reason": "سحب من الحساب بدون علمه"
+    },
+    {
+      "id": "DEV-T04-2",
+      "family": "T04",
+      "message": "السلام عليكم، ألاحظ إن 250000 انخصم مرتين بتاريخ 2026-09-29، أرجو توضيح السبب.",
+      "category": "other -> transfer_failed",
+      "priority": "صح",
+      "fields": [],
+      "confidence": 0.97,
+      "review_reasons": [],
+      "expected_review": "unclear_message",
+      "reason": "المبلغ انخصم مرتين بتاريخ 2026-09-29"
+    },
+    {
+      "id": "DEV-G08-3",
+      "family": "G08",
+      "message": "أهلاً، عندي إيداع بـخمسمية الف وما نزل، والتحويل الثاني فشل بعد. ما اعرف شنو السالفة. أتمنى تساعدون",
+      "category": "transfer_failed -> other",
+      "priority": "صح",
+      "fields": [
+        "amount: متوقع=500000 طلع=5000"
+      ],
+      "confidence": 0.85,
+      "review_reasons": [
+        "multiple_issues",
+        "money_issue_unclassified"
+      ],
+      "expected_review": "multiple_issues",
+      "reason": "الإيداع ما نزل والتحويل فشل"
+    }
+  ],
+  "split": "dev",
+  "dataset": "llm",
+  "provider": "groq",
+  "model": "openai/gpt-oss-120b",
+  "prompt_version": "v5",
+  "drafts": true,
+  "wall_seconds": 73.0,
+  "db": "local.nosync/runs/llm-dev-20261103-180004.db",
+  "run": {
+    "run_id": "31305f75e5bd48a6993ee4494b4e99ab",
+    "done": 5,
+    "failed": 0,
+    "skipped": 0,
+    "not_started": 0,
+    "stopped": null,
+    "resume_after": null
+  },
+  "forbidden_in_drafts": 0,
+  "llm_calls": [
+    {
+      "stage": "classify",
+      "outcome": "ok",
+      "n": 5,
+      "tin": 12006,
+      "cached": 2304,
+      "tout": 1230,
+      "unknown": 0,
+      "cached_unknown": 4
+    },
+    {
+      "stage": "classify",
+      "outcome": "rate_limited",
+      "n": 3,
+      "tin": null,
+      "cached": null,
+      "tout": null,
+      "unknown": 3,
+      "cached_unknown": 3
+    },
+    {
+      "stage": "draft",
+      "outcome": "ok",
+      "n": 5,
+      "tin": 4703,
+      "cached": null,
+      "tout": 430,
+      "unknown": 0,
+      "cached_unknown": 5
+    },
+    {
+      "stage": "draft",
+      "outcome": "rate_limited",
+      "n": 2,
+      "tin": null,
+      "cached": null,
+      "tout": null,
+      "unknown": 2,
+      "cached_unknown": 2
+    }
+  ]
+}
